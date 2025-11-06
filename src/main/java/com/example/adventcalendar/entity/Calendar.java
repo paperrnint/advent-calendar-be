@@ -1,5 +1,7 @@
 package com.example.adventcalendar.entity;
 
+import java.util.UUID;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -9,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -18,7 +21,8 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "calendars", indexes = {
-	@Index(name = "idx_user_id", columnList = "user_id")
+	@Index(name = "idx_user_id", columnList = "user_id"),
+	@Index(name = "idx_share_uuid", columnList = "share_uuid")
 })
 @Getter
 @Setter
@@ -37,4 +41,14 @@ public class Calendar extends BaseEntity {
 
 	@Column(length = 50)
 	private String selectedColor;
+
+	@Column(nullable = false, unique = true, length = 36)
+	private String shareUuid;
+
+	@PrePersist
+	public void generateShareUuid() {
+		if (this.shareUuid == null) {
+			this.shareUuid = UUID.randomUUID().toString();
+		}
+	}
 }

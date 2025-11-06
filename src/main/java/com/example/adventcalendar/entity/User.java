@@ -35,9 +35,6 @@ public class User extends BaseEntity {
 	@Column(nullable = false, length = 50)
 	private String name;
 
-	@Column(length = 500)
-	private String profileImageUrl;
-
 	@Column(nullable = false, length = 20)
 	private String oauthProvider; // NAVER, KAKAO
 

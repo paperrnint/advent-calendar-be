@@ -10,5 +10,9 @@ import com.example.adventcalendar.entity.Calendar;
 @Repository
 public interface CalendarRepository extends JpaRepository<Calendar, Long> {
 
-	Optional<Calendar> findByUserId(Long userId);
+	Optional<Calendar> findByShareUuid(String shareUuid);
+
+	Optional<Calendar> findByUserIdAndId(Long userId, Long calendarId);
+
+	java.util.List<Calendar> findByUserId(Long userId);
 }
