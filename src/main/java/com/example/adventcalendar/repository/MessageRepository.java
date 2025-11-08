@@ -11,7 +11,9 @@ import com.example.adventcalendar.entity.Message;
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Long> {
 
-	Optional<Message> findByCalendarIdAndDay(Long calendarId, Integer day);
+	Optional<Message> findByUserIdAndDay(Long userId, Integer day);
 
-	List<Message> findByCalendarId(Long calendarId);
+	List<Message> findByUserId(Long userId);
+
+	List<Message> findByUserIdAndDayLessThanEqual(Long userId, Integer day);
 }

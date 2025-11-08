@@ -42,7 +42,7 @@ public class SecurityConfig {
 				).permitAll()
 
 				.requestMatchers(
-					"/api/v1/calendars/share/**"
+					"/api/calendars/share/**"
 				).permitAll()
 
 				.requestMatchers(

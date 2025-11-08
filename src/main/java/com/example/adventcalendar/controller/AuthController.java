@@ -15,6 +15,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+
 @Slf4j
 @Tag(name = "인증", description = "OAuth2 소셜 로그인 API")
 @RestController
@@ -39,12 +43,17 @@ public class AuthController {
 
 			TempTokenResponse response = authService.handleNaverCallback(code, state);
 
+			//URL 인코딩 추가
+			String encodedTempToken = URLEncoder.encode(response.tempToken(), StandardCharsets.UTF_8);
+			String encodedName = URLEncoder.encode(response.name(), StandardCharsets.UTF_8);
+			String encodedEmail = URLEncoder.encode(response.email(), StandardCharsets.UTF_8);
+
 			String redirectUrl = String.format(
 				"%s/auth/signup?tempToken=%s&name=%s&email=%s",
 				frontendUrl,
-				response.tempToken(),
-				response.name(),
-				response.email()
+				encodedTempToken,
+				encodedName,
+				encodedEmail
 			);
 
 			log.info("네이버 OAuth 콜백 처리 완료 - 리다이렉트: {}", redirectUrl);
@@ -52,7 +61,10 @@ public class AuthController {
 
 		} catch (Exception e) {
 			log.error("네이버 OAuth 콜백 처리 실패", e);
-			return new RedirectView(frontendUrl + "/auth/error?message=" + e.getMessage());
+
+			//에러 메시지도 URL 인코딩
+			String encodedMessage = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
+			return new RedirectView(frontendUrl + "/auth/error?message=" + encodedMessage);
 		}
 	}
 
@@ -66,12 +78,17 @@ public class AuthController {
 
 			TempTokenResponse response = authService.handleKakaoCallback(code);
 
+			//URL 인코딩 추가
+			String encodedTempToken = URLEncoder.encode(response.tempToken(), StandardCharsets.UTF_8);
+			String encodedName = URLEncoder.encode(response.name(), StandardCharsets.UTF_8);
+			String encodedEmail = URLEncoder.encode(response.email(), StandardCharsets.UTF_8);
+
 			String redirectUrl = String.format(
 				"%s/auth/signup?tempToken=%s&name=%s&email=%s",
 				frontendUrl,
-				response.tempToken(),
-				response.name(),
-				response.email()
+				encodedTempToken,
+				encodedName,
+				encodedEmail
 			);
 
 			log.info("카카오 OAuth 콜백 처리 완료 - 리다이렉트: {}", redirectUrl);
@@ -79,7 +96,10 @@ public class AuthController {
 
 		} catch (Exception e) {
 			log.error("카카오 OAuth 콜백 처리 실패", e);
-			return new RedirectView(frontendUrl + "/auth/error?message=" + e.getMessage());
+
+			//에러 메시지도 URL 인코딩
+			String encodedMessage = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
+			return new RedirectView(frontendUrl + "/auth/error?message=" + encodedMessage);
 		}
 	}
 

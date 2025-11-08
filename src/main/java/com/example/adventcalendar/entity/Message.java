@@ -18,8 +18,8 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "messages", indexes = {
-	@Index(name = "idx_calendar_id", columnList = "calendar_id"),
-	@Index(name = "idx_calendar_day", columnList = "calendar_id, day")
+	@Index(name = "idx_user_id", columnList = "user_id"),
+	@Index(name = "idx_user_day", columnList = "user_id, day")
 })
 @Getter
 @Setter
@@ -33,17 +33,17 @@ public class Message extends BaseEntity {
 	private Long id;
 
 	@ManyToOne(fetch = FetchType.LAZY)
-	@JoinColumn(name = "calendar_id", nullable = false)
-	private Calendar calendar;
+	@JoinColumn(name = "user_id", nullable = false)
+	private User user;
 
 	@Column(nullable = false)
-	private Integer day; // 1-25
+	private Integer day;
 
 	@Column(nullable = false, length = 100)
 	private String toName;
 
 	@Column(nullable = false, length = 100)
-	private String fromName; // 익명의 이름
+	private String fromName;
 
 	@Column(nullable = false, columnDefinition = "LONGTEXT")
 	private String messageContent;
