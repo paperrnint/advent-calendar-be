@@ -23,16 +23,10 @@ public class AuthService {
 	private final OAuth2Service oAuth2Service;
 	private final JwtTokenProvider jwtTokenProvider;
 	private final UserRepository userRepository;
-	private final CalendarRepository calendarRepository;
 
 	@Transactional
 	public TempTokenResponse handleNaverCallback(String code, String state) {
 		OAuth2Service.OAuthUserInfo userInfo = oAuth2Service.authenticateNaver(code, state);
-
-		Optional<User> existingUser = userRepository.findByOauthProviderAndOauthId(
-			userInfo.getOauthProvider(),
-			userInfo.getOauthId()
-		);
 
 		String tempToken = jwtTokenProvider.createTempToken(
 			userInfo.getOauthProvider(),
@@ -54,11 +48,6 @@ public class AuthService {
 	public TempTokenResponse handleKakaoCallback(String code) {
 		OAuth2Service.OAuthUserInfo userInfo = oAuth2Service.authenticateKakao(code);
 
-		Optional<User> existingUser = userRepository.findByOauthProviderAndOauthId(
-			userInfo.getOauthProvider(),
-			userInfo.getOauthId()
-		);
-
 		String tempToken = jwtTokenProvider.createTempToken(
 			userInfo.getOauthProvider(),
 			userInfo.getOauthId(),
@@ -77,6 +66,7 @@ public class AuthService {
 
 	@Transactional
 	public SignupCompleteResponse completeSignup(String tempToken, SignupCompleteRequest request) {
+		// 1. 임시 토큰 검증
 		if (!jwtTokenProvider.validateToken(tempToken)) {
 			throw new RuntimeException("유효하지 않은 토큰입니다");
 		}
@@ -88,32 +78,24 @@ public class AuthService {
 			throw new RuntimeException("임시 토큰이 아닙니다");
 		}
 
+		// 2. OAuth 정보 추출
 		String oauthProvider = claims.get("oauthProvider", String.class);
 		String oauthId = claims.get("oauthId", String.class);
 		String email = claims.get("email", String.class);
-		String profileImage = claims.get("profileImage", String.class);
 
+		// 3. 기존 사용자 확인
 		Optional<User> existingUser = userRepository.findByOauthProviderAndOauthId(
 			oauthProvider,
 			oauthId
 		);
 
 		User user;
-		Calendar calendar;
 
 		if (existingUser.isPresent()) {
 			user = existingUser.get();
 			user.setName(request.getName());
 			user.setSelectedColor(request.getSelectedColor());
 			user = userRepository.save(user);
-
-			calendar = calendarRepository.findByUserId(user.getId())
-				.stream()
-				.findFirst()
-				.orElseThrow(() -> new RuntimeException("캘린더를 찾을 수 없습니다"));
-
-			calendar.setSelectedColor(request.getSelectedColor());
-			calendar = calendarRepository.save(calendar);
 		} else {
 			user = User.builder()
 				.email(email)
@@ -124,12 +106,6 @@ public class AuthService {
 				.isActive(true)
 				.build();
 			user = userRepository.save(user);
-
-			calendar = Calendar.builder()
-				.user(user)
-				.selectedColor(request.getSelectedColor())
-				.build();
-			calendar = calendarRepository.save(calendar);
 		}
 
 		String accessToken = jwtTokenProvider.createAccessToken(
@@ -142,15 +118,17 @@ public class AuthService {
 
 		return SignupCompleteResponse.create(
 			UserResponse.fromEntity(user),
-			calendar.getShareUuid(),
+			user.getShareUuid(),
 			accessToken,
 			refreshToken,
 			jwtTokenProvider.getAccessTokenValidityInSeconds()
 		);
 	}
 
+	//기존 사용자 로그인
 	@Transactional(readOnly = true)
 	public SignupCompleteResponse loginExistingUser(String tempToken) {
+		// 1. 임시 토큰 검증
 		if (!jwtTokenProvider.validateToken(tempToken)) {
 			throw new RuntimeException("유효하지 않은 토큰입니다");
 		}
@@ -159,14 +137,11 @@ public class AuthService {
 		String oauthProvider = claims.get("oauthProvider", String.class);
 		String oauthId = claims.get("oauthId", String.class);
 
+		// 2. 사용자 조회
 		User user = userRepository.findByOauthProviderAndOauthId(oauthProvider, oauthId)
 			.orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
 
-		Calendar calendar = calendarRepository.findByUserId(user.getId())
-			.stream()
-			.findFirst()
-			.orElseThrow(() -> new RuntimeException("캘린더를 찾을 수 없습니다"));
-
+		// 3. JWT 토큰 생성
 		String accessToken = jwtTokenProvider.createAccessToken(
 			user.getId(),
 			user.getEmail(),
@@ -175,9 +150,10 @@ public class AuthService {
 
 		String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
+		// 4. 응답 생성
 		return SignupCompleteResponse.create(
 			UserResponse.fromEntity(user),
-			calendar.getShareUuid(),
+			user.getShareUuid(),
 			accessToken,
 			refreshToken,
 			jwtTokenProvider.getAccessTokenValidityInSeconds()
