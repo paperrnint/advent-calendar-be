@@ -37,6 +37,24 @@ public class JwtTokenProvider {
 			.claim("email", email)
 			.claim("oauthProvider", oauthProvider)
 			.claim("type", "access")
+			.claim("hasUuid", true)  // uuid 존재 여부
+			.setIssuedAt(now)
+			.setExpiration(validity)
+			.signWith(secretKey, SignatureAlgorithm.HS512)
+			.compact();
+	}
+
+
+	public String createAccessTokenWithoutUuid(Long userId, String email, String oauthProvider) {
+		Date now = new Date();
+		Date validity = new Date(now.getTime() + accessTokenValidityInMilliseconds);
+
+		return Jwts.builder()
+			.setSubject(userId.toString())
+			.claim("email", email)
+			.claim("oauthProvider", oauthProvider)
+			.claim("type", "access")
+			.claim("hasUuid", false)  // uuid 미존재
 			.setIssuedAt(now)
 			.setExpiration(validity)
 			.signWith(secretKey, SignatureAlgorithm.HS512)
@@ -56,27 +74,15 @@ public class JwtTokenProvider {
 			.compact();
 	}
 
-	public String createTempToken(String oauthProvider, String oauthId, String email, String name, String profileImage) {
-		Date now = new Date();
-		Date validity = new Date(now.getTime() + 5 * 60 * 1000); // 5분
-
-		return Jwts.builder()
-			.setSubject(oauthProvider + ":" + oauthId)
-			.claim("oauthProvider", oauthProvider)
-			.claim("oauthId", oauthId)
-			.claim("email", email)
-			.claim("name", name)
-			.claim("profileImage", profileImage)
-			.claim("type", "temp")
-			.setIssuedAt(now)
-			.setExpiration(validity)
-			.signWith(secretKey, SignatureAlgorithm.HS512)
-			.compact();
-	}
-
 	public Long getUserId(String token) {
 		Claims claims = parseClaims(token);
 		return Long.parseLong(claims.getSubject());
+	}
+
+	public boolean hasUuid(String token) {
+		Claims claims = parseClaims(token);
+		Boolean hasUuid = claims.get("hasUuid", Boolean.class);
+		return hasUuid != null && hasUuid;
 	}
 
 	public boolean validateToken(String token) {
@@ -101,5 +107,9 @@ public class JwtTokenProvider {
 
 	public long getAccessTokenValidityInSeconds() {
 		return accessTokenValidityInMilliseconds / 1000;
+	}
+
+	public long getRefreshTokenValidityInSeconds() {
+		return refreshTokenValidityInMilliseconds / 1000;
 	}
 }

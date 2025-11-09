@@ -1,11 +1,12 @@
 package com.example.adventcalendar.service;
 
 import com.example.adventcalendar.config.JwtTokenProvider;
-import com.example.adventcalendar.dto.request.SignupCompleteRequest;
-import com.example.adventcalendar.dto.response.SignupCompleteResponse;
-import com.example.adventcalendar.dto.response.TempTokenResponse;
-import com.example.adventcalendar.dto.response.UserResponse;
+import com.example.adventcalendar.dto.request.UserCreateRequest;
+import com.example.adventcalendar.dto.response.LoginResponse;
+import com.example.adventcalendar.dto.response.UserCreateResponse;
+import com.example.adventcalendar.entity.RefreshToken;
 import com.example.adventcalendar.entity.User;
+import com.example.adventcalendar.repository.RefreshTokenRepository;
 import com.example.adventcalendar.repository.UserRepository;
 import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @Slf4j
@@ -23,90 +25,103 @@ public class AuthService {
 	private final OAuth2Service oAuth2Service;
 	private final JwtTokenProvider jwtTokenProvider;
 	private final UserRepository userRepository;
+	private final RefreshTokenRepository refreshTokenRepository;
+
 
 	@Transactional
-	public TempTokenResponse handleNaverCallback(String code, String state) {
+	public LoginResponse handleNaverCallback(String code, String state) {
 		OAuth2Service.OAuthUserInfo userInfo = oAuth2Service.authenticateNaver(code, state);
 
-		String tempToken = jwtTokenProvider.createTempToken(
-			userInfo.getOauthProvider(),
-			userInfo.getOauthId(),
-			userInfo.getEmail(),
-			userInfo.getName(),
-			userInfo.getProfileImageUrl()
-		);
-
-		return TempTokenResponse.create(
-			tempToken,
-			300L, // 5분
-			userInfo.getName(),
-			userInfo.getEmail()
-		);
-	}
-
-	@Transactional
-	public TempTokenResponse handleKakaoCallback(String code) {
-		OAuth2Service.OAuthUserInfo userInfo = oAuth2Service.authenticateKakao(code);
-
-		String tempToken = jwtTokenProvider.createTempToken(
-			userInfo.getOauthProvider(),
-			userInfo.getOauthId(),
-			userInfo.getEmail(),
-			userInfo.getName(),
-			userInfo.getProfileImageUrl()
-		);
-
-		return TempTokenResponse.create(
-			tempToken,
-			300L, // 5분
-			userInfo.getName(),
-			userInfo.getEmail()
-		);
-	}
-
-	@Transactional
-	public SignupCompleteResponse completeSignup(String tempToken, SignupCompleteRequest request) {
-		// 1. 임시 토큰 검증
-		if (!jwtTokenProvider.validateToken(tempToken)) {
-			throw new RuntimeException("유효하지 않은 토큰입니다");
-		}
-
-		Claims claims = jwtTokenProvider.parseClaims(tempToken);
-		String tokenType = claims.get("type", String.class);
-
-		if (!"temp".equals(tokenType)) {
-			throw new RuntimeException("임시 토큰이 아닙니다");
-		}
-
-		// 2. OAuth 정보 추출
-		String oauthProvider = claims.get("oauthProvider", String.class);
-		String oauthId = claims.get("oauthId", String.class);
-		String email = claims.get("email", String.class);
-
-		// 3. 기존 사용자 확인
 		Optional<User> existingUser = userRepository.findByOauthProviderAndOauthId(
-			oauthProvider,
-			oauthId
+			userInfo.getOauthProvider(),
+			userInfo.getOauthId()
 		);
-
-		User user;
 
 		if (existingUser.isPresent()) {
-			user = existingUser.get();
-			user.setName(request.getName());
-			user.setSelectedColor(request.getSelectedColor());
-			user = userRepository.save(user);
+			return loginExistingUser(existingUser.get());
 		} else {
-			user = User.builder()
-				.email(email)
-				.name(request.getName())
-				.oauthProvider(oauthProvider)
-				.oauthId(oauthId)
-				.selectedColor(request.getSelectedColor())
-				.isActive(true)
-				.build();
-			user = userRepository.save(user);
+			return createTemporaryUser(userInfo);
 		}
+	}
+
+	@Transactional
+	public LoginResponse handleKakaoCallback(String code) {
+		OAuth2Service.OAuthUserInfo userInfo = oAuth2Service.authenticateKakao(code);
+
+		Optional<User> existingUser = userRepository.findByOauthProviderAndOauthId(
+			userInfo.getOauthProvider(),
+			userInfo.getOauthId()
+		);
+
+		if (existingUser.isPresent()) {
+			return loginExistingUser(existingUser.get());
+		} else {
+			return createTemporaryUser(userInfo);
+		}
+	}
+
+
+	private LoginResponse loginExistingUser(User user) {
+		String accessToken = jwtTokenProvider.createAccessToken(
+			user.getId(),
+			user.getEmail(),
+			user.getOauthProvider()
+		);
+
+		String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
+
+		saveRefreshToken(user.getId(), refreshToken);
+
+		return LoginResponse.forExistingUser(
+			accessToken,
+			refreshToken,
+			jwtTokenProvider.getAccessTokenValidityInSeconds(),
+			user.getShareUuid()
+		);
+	}
+
+	private LoginResponse createTemporaryUser(OAuth2Service.OAuthUserInfo userInfo) {
+		User tempUser = User.builder()
+			.email(userInfo.getEmail())
+			.name(userInfo.getName())
+			.oauthProvider(userInfo.getOauthProvider())
+			.oauthId(userInfo.getOauthId())
+			.isActive(true)
+			.build();
+
+		tempUser = userRepository.save(tempUser);
+
+		String accessToken = jwtTokenProvider.createAccessTokenWithoutUuid(
+			tempUser.getId(),
+			tempUser.getEmail(),
+			tempUser.getOauthProvider()
+		);
+
+		String refreshToken = jwtTokenProvider.createRefreshToken(tempUser.getId());
+
+		saveRefreshToken(tempUser.getId(), refreshToken);
+
+		return LoginResponse.forNewUser(
+			accessToken,
+			refreshToken,
+			jwtTokenProvider.getAccessTokenValidityInSeconds()
+		);
+	}
+
+	@Transactional
+	public UserCreateResponse completeUserRegistration(Long userId, UserCreateRequest request) {
+		User user = userRepository.findById(userId)
+			.orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
+
+		if (user.getShareUuid() != null) {
+			throw new RuntimeException("이미 등록이 완료된 사용자입니다");
+		}
+
+		user.setName(request.getName());
+		user.setSelectedColor(request.getSelectedColor());
+		user.generateShareUuid();  // UUID 생성
+
+		user = userRepository.save(user);
 
 		String accessToken = jwtTokenProvider.createAccessToken(
 			user.getId(),
@@ -116,8 +131,11 @@ public class AuthService {
 
 		String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
 
-		return SignupCompleteResponse.create(
-			UserResponse.fromEntity(user),
+		refreshTokenRepository.deleteByUserId(user.getId());
+		saveRefreshToken(user.getId(), refreshToken);
+
+		return UserCreateResponse.create(
+			user.getId(),
 			user.getShareUuid(),
 			accessToken,
 			refreshToken,
@@ -125,38 +143,43 @@ public class AuthService {
 		);
 	}
 
-	//기존 사용자 로그인
-	@Transactional(readOnly = true)
-	public SignupCompleteResponse loginExistingUser(String tempToken) {
-		// 1. 임시 토큰 검증
-		if (!jwtTokenProvider.validateToken(tempToken)) {
-			throw new RuntimeException("유효하지 않은 토큰입니다");
+	@Transactional
+	public String refreshAccessToken(String refreshToken) {
+		if (!jwtTokenProvider.validateToken(refreshToken)) {
+			throw new RuntimeException("유효하지 않은 RefreshToken입니다");
 		}
 
-		Claims claims = jwtTokenProvider.parseClaims(tempToken);
-		String oauthProvider = claims.get("oauthProvider", String.class);
-		String oauthId = claims.get("oauthId", String.class);
+		RefreshToken storedToken = refreshTokenRepository.findByToken(refreshToken)
+			.orElseThrow(() -> new RuntimeException("RefreshToken을 찾을 수 없습니다"));
 
-		// 2. 사용자 조회
-		User user = userRepository.findByOauthProviderAndOauthId(oauthProvider, oauthId)
+		if (storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
+			refreshTokenRepository.delete(storedToken);
+			throw new RuntimeException("RefreshToken이 만료되었습니다");
+		}
+
+		User user = userRepository.findById(storedToken.getUserId())
 			.orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
 
-		// 3. JWT 토큰 생성
-		String accessToken = jwtTokenProvider.createAccessToken(
+		return jwtTokenProvider.createAccessToken(
 			user.getId(),
 			user.getEmail(),
 			user.getOauthProvider()
 		);
+	}
 
-		String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
+	@Transactional
+	public void logout(String refreshToken) {
+		refreshTokenRepository.findByToken(refreshToken)
+			.ifPresent(refreshTokenRepository::delete);
+	}
 
-		// 4. 응답 생성
-		return SignupCompleteResponse.create(
-			UserResponse.fromEntity(user),
-			user.getShareUuid(),
-			accessToken,
-			refreshToken,
-			jwtTokenProvider.getAccessTokenValidityInSeconds()
-		);
+	private void saveRefreshToken(Long userId, String token) {
+		RefreshToken refreshToken = RefreshToken.builder()
+			.userId(userId)
+			.token(token)
+			.expiresAt(LocalDateTime.now().plusDays(30))
+			.build();
+
+		refreshTokenRepository.save(refreshToken);
 	}
 }

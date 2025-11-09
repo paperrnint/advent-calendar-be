@@ -1,6 +1,5 @@
 package com.example.adventcalendar.config;
 
-import com.example.adventcalendar.config.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,8 +36,14 @@ public class SecurityConfig {
 
 			.authorizeHttpRequests(auth -> auth
 				.requestMatchers(
-					"/api/auth/**",
-					"/api/oauth/**"
+					"/api/auth/naver",
+					"/api/auth/kakao",
+					"/api/auth/oauth/**"
+				).permitAll()
+
+				.requestMatchers(
+					"/api/auth/refresh",
+					"/api/auth/logout"
 				).permitAll()
 
 				.requestMatchers(
@@ -64,7 +69,6 @@ public class SecurityConfig {
 		return http.build();
 	}
 
-
 	@Bean
 	public CorsConfigurationSource corsConfigurationSource() {
 		CorsConfiguration configuration = new CorsConfiguration();
@@ -81,7 +85,6 @@ public class SecurityConfig {
 		configuration.setAllowedHeaders(Arrays.asList(
 			"Authorization",
 			"Content-Type",
-			"X-Temp-Token",
 			"X-Requested-With"
 		));
 

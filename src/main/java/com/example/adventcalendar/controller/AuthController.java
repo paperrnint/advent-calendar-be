@@ -1,23 +1,22 @@
 package com.example.adventcalendar.controller;
 
-import com.example.adventcalendar.dto.request.SignupCompleteRequest;
+import com.example.adventcalendar.dto.request.UserCreateRequest;
 import com.example.adventcalendar.dto.response.ApiResponse;
-import com.example.adventcalendar.dto.response.SignupCompleteResponse;
-import com.example.adventcalendar.dto.response.TempTokenResponse;
+import com.example.adventcalendar.dto.response.LoginResponse;
+import com.example.adventcalendar.dto.response.UserCreateResponse;
 import com.example.adventcalendar.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
-
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 
 @Slf4j
 @Tag(name = "인증", description = "OAuth2 소셜 로그인 API")
@@ -31,146 +30,173 @@ public class AuthController {
 	@Value("${app.frontend.url}")
 	private String frontendUrl;
 
+	@Value("${oauth2.naver.client-id}")
+	private String naverClientId;
 
-	@Operation(summary = "네이버 OAuth 콜백", description = "네이버 인증 후 리다이렉트되어 임시 토큰을 발급합니다")
+	@Value("${oauth2.naver.redirect-uri}")
+	private String naverRedirectUri;
+
+	@Value("${oauth2.kakao.client-id}")
+	private String kakaoClientId;
+
+	@Value("${oauth2.kakao.redirect-uri}")
+	private String kakaoRedirectUri;
+
+
+	@Operation(summary = "네이버 OAuth 시작", description = "네이버 OAuth 인증 페이지로 리다이렉트합니다")
+	@GetMapping("/naver")
+	public RedirectView startNaverOAuth() {
+		String state = java.util.UUID.randomUUID().toString();
+		String naverAuthUrl = String.format(
+			"https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=%s&redirect_uri=%s&state=%s",
+			naverClientId,
+			naverRedirectUri,
+			state
+		);
+
+		log.info("네이버 OAuth 시작 - 리다이렉트: {}", naverAuthUrl);
+		return new RedirectView(naverAuthUrl);
+	}
+
+	@Operation(summary = "카카오 OAuth 시작", description = "카카오 OAuth 인증 페이지로 리다이렉트합니다")
+	@GetMapping("/kakao")
+	public RedirectView startKakaoOAuth() {
+		String kakaoAuthUrl = String.format(
+			"https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=%s&redirect_uri=%s",
+			kakaoClientId,
+			kakaoRedirectUri
+		);
+
+		log.info("카카오 OAuth 시작 - 리다이렉트: {}", kakaoAuthUrl);
+		return new RedirectView(kakaoAuthUrl);
+	}
+
+
+	@Operation(summary = "네이버 OAuth 콜백", description = "네이버 인증 후 콜백을 처리합니다")
 	@GetMapping("/oauth/naver/callback")
 	public RedirectView naverCallback(
 		@Parameter(description = "Authorization code") @RequestParam String code,
-		@Parameter(description = "State parameter") @RequestParam String state
+		@Parameter(description = "State parameter") @RequestParam String state,
+		HttpServletResponse response
 	) {
 		try {
 			log.info("네이버 OAuth 콜백 처리 시작 - code: {}, state: {}", code, state);
 
-			TempTokenResponse response = authService.handleNaverCallback(code, state);
+			LoginResponse loginResponse = authService.handleNaverCallback(code, state);
 
-			//URL 인코딩 추가
-			String encodedTempToken = URLEncoder.encode(response.tempToken(), StandardCharsets.UTF_8);
-			String encodedName = URLEncoder.encode(response.name(), StandardCharsets.UTF_8);
-			String encodedEmail = URLEncoder.encode(response.email(), StandardCharsets.UTF_8);
+			setRefreshTokenCookie(response, loginResponse.refreshToken());
 
-			String redirectUrl = String.format(
-				"%s/auth/signup?tempToken=%s&name=%s&email=%s",
-				frontendUrl,
-				encodedTempToken,
-				encodedName,
-				encodedEmail
-			);
-
-			log.info("네이버 OAuth 콜백 처리 완료 - 리다이렉트: {}", redirectUrl);
-			return new RedirectView(redirectUrl);
+			if (loginResponse.isExistingUser()) {
+				String redirectUrl = String.format("%s/%s", frontendUrl, loginResponse.userUuid());
+				log.info("기존 사용자 로그인 완료 - 리다이렉트: {}", redirectUrl);
+				return new RedirectView(redirectUrl);
+			} else {
+				String redirectUrl = String.format("%s/new?token=%s", frontendUrl, loginResponse.accessToken());
+				log.info("신규 사용자 - 리다이렉트: {}", redirectUrl);
+				return new RedirectView(redirectUrl);
+			}
 
 		} catch (Exception e) {
 			log.error("네이버 OAuth 콜백 처리 실패", e);
-
-			//에러 메시지도 URL 인코딩
-			String encodedMessage = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
-			return new RedirectView(frontendUrl + "/auth/error?message=" + encodedMessage);
+			return new RedirectView(frontendUrl + "/auth/error?message=" + e.getMessage());
 		}
 	}
 
-	@Operation(summary = "카카오 OAuth 콜백", description = "카카오 인증 후 리다이렉트되어 임시 토큰을 발급합니다")
+	@Operation(summary = "카카오 OAuth 콜백", description = "카카오 인증 후 콜백을 처리합니다")
 	@GetMapping("/oauth/kakao/callback")
 	public RedirectView kakaoCallback(
-		@Parameter(description = "Authorization code") @RequestParam String code
+		@Parameter(description = "Authorization code") @RequestParam String code,
+		HttpServletResponse response
 	) {
 		try {
 			log.info("카카오 OAuth 콜백 처리 시작 - code: {}", code);
 
-			TempTokenResponse response = authService.handleKakaoCallback(code);
+			LoginResponse loginResponse = authService.handleKakaoCallback(code);
 
-			//URL 인코딩 추가
-			String encodedTempToken = URLEncoder.encode(response.tempToken(), StandardCharsets.UTF_8);
-			String encodedName = URLEncoder.encode(response.name(), StandardCharsets.UTF_8);
-			String encodedEmail = URLEncoder.encode(response.email(), StandardCharsets.UTF_8);
+			setRefreshTokenCookie(response, loginResponse.refreshToken());
 
-			String redirectUrl = String.format(
-				"%s/auth/signup?tempToken=%s&name=%s&email=%s",
-				frontendUrl,
-				encodedTempToken,
-				encodedName,
-				encodedEmail
-			);
-
-			log.info("카카오 OAuth 콜백 처리 완료 - 리다이렉트: {}", redirectUrl);
-			return new RedirectView(redirectUrl);
+			if (loginResponse.isExistingUser()) {
+				String redirectUrl = String.format("%s/%s", frontendUrl, loginResponse.userUuid());
+				log.info("기존 사용자 로그인 완료 - 리다이렉트: {}", redirectUrl);
+				return new RedirectView(redirectUrl);
+			} else {
+				String redirectUrl = String.format("%s/new?token=%s", frontendUrl, loginResponse.accessToken());
+				log.info("신규 사용자 - 리다이렉트: {}", redirectUrl);
+				return new RedirectView(redirectUrl);
+			}
 
 		} catch (Exception e) {
 			log.error("카카오 OAuth 콜백 처리 실패", e);
-
-			//에러 메시지도 URL 인코딩
-			String encodedMessage = URLEncoder.encode(e.getMessage(), StandardCharsets.UTF_8);
-			return new RedirectView(frontendUrl + "/auth/error?message=" + encodedMessage);
+			return new RedirectView(frontendUrl + "/auth/error?message=" + e.getMessage());
 		}
 	}
 
-	@Operation(summary = "회원가입 완료", description = "임시 토큰과 함께 이름, 색상을 받아 회원가입을 완료합니다")
-	@PostMapping("/signup/complete")
-	public ApiResponse<SignupCompleteResponse> completeSignup(
-		@Parameter(description = "임시 토큰", required = true)
-		@RequestHeader("X-Temp-Token") String tempToken,
-
-		@Parameter(description = "회원가입 정보", required = true)
-		@Valid @RequestBody SignupCompleteRequest request
+	@Operation(summary = "신규 사용자 등록", description = "신규 사용자의 이름과 색상을 등록합니다")
+	@PostMapping("/users")
+	public ApiResponse<UserCreateResponse> createUser(
+		@Parameter(description = "현재 로그인된 사용자 ID", hidden = true) Authentication authentication,
+		@Parameter(description = "사용자 정보", required = true) @Valid @RequestBody UserCreateRequest request,
+		HttpServletResponse response
 	) {
-		log.info("회원가입 완료 요청 - 이름: {}, 색상: {}", request.getName(), request.getSelectedColor());
+		Long userId = (Long) authentication.getPrincipal();
+		log.info("신규 사용자 등록 요청 - userId: {}, 이름: {}, 색상: {}", userId, request.getName(), request.getSelectedColor());
 
-		SignupCompleteResponse response = authService.completeSignup(tempToken, request);
+		UserCreateResponse userResponse = authService.completeUserRegistration(userId, request);
 
-		log.info("회원가입 완료 - userId: {}, calendarUuid: {}",
-			response.user().id(),
-			response.calendarUuid()
-		);
+		setRefreshTokenCookie(response, userResponse.refreshToken());
 
-		return ApiResponse.success(response, "회원가입이 완료되었습니다");
+		log.info("신규 사용자 등록 완료 - userId: {}, uuid: {}", userId, userResponse.userUuid());
+
+		return ApiResponse.success(userResponse, "회원가입이 완료되었습니다");
 	}
 
-	@Operation(summary = "기존 사용자 로그인", description = "기존 사용자가 임시 토큰으로 로그인합니다")
-	@PostMapping("/login")
-	public ApiResponse<SignupCompleteResponse> login(
-		@Parameter(description = "임시 토큰", required = true)
-		@RequestHeader("X-Temp-Token") String tempToken
+	@Operation(summary = "토큰 갱신", description = "RefreshToken으로 새로운 AccessToken을 발급받습니다")
+	@PostMapping("/refresh")
+	public ApiResponse<String> refreshToken(
+		@CookieValue(name = "refreshToken", required = true) String refreshToken,
+		HttpServletResponse response
 	) {
-		log.info("기존 사용자 로그인 요청");
+		log.info("토큰 갱신 요청");
 
-		SignupCompleteResponse response = authService.loginExistingUser(tempToken);
+		String newAccessToken = authService.refreshAccessToken(refreshToken);
 
-		log.info("기존 사용자 로그인 완료 - userId: {}, calendarUuid: {}",
-			response.user().id(),
-			response.calendarUuid()
-		);
+		log.info("토큰 갱신 완료");
 
-		return ApiResponse.success(response, "로그인되었습니다");
+		return ApiResponse.success(newAccessToken, "토큰이 갱신되었습니다");
 	}
 
-	@Operation(summary = "네이버 로그인 URL", description = "네이버 OAuth 인증을 위한 URL을 반환합니다")
-	@GetMapping("/naver/url")
-	public ApiResponse<String> getNaverLoginUrl(
-		@Value("${oauth2.naver.client-id}") String clientId,
-		@Value("${oauth2.naver.redirect-uri}") String redirectUri
+	@Operation(summary = "로그아웃", description = "로그아웃하고 RefreshToken을 무효화합니다")
+	@PostMapping("/logout")
+	public ApiResponse<Void> logout(
+		@CookieValue(name = "refreshToken", required = false) String refreshToken,
+		HttpServletResponse response
 	) {
-		String state = java.util.UUID.randomUUID().toString();
-		String naverAuthUrl = String.format(
-			"https://nid.naver.com/oauth2.0/authorize?response_type=code&client_id=%s&redirect_uri=%s&state=%s",
-			clientId,
-			redirectUri,
-			state
-		);
+		log.info("로그아웃 요청");
 
-		return ApiResponse.success(naverAuthUrl);
+		if (refreshToken != null) {
+			authService.logout(refreshToken);
+		}
+
+		Cookie cookie = new Cookie("refreshToken", null);
+		cookie.setHttpOnly(true);
+		cookie.setSecure(true);
+		cookie.setPath("/");
+		cookie.setMaxAge(0);
+		response.addCookie(cookie);
+
+		log.info("로그아웃 완료");
+
+		return ApiResponse.success();
 	}
 
-	@Operation(summary = "카카오 로그인 URL", description = "카카오 OAuth 인증을 위한 URL을 반환합니다")
-	@GetMapping("/kakao/url")
-	public ApiResponse<String> getKakaoLoginUrl(
-		@Value("${oauth2.kakao.client-id}") String clientId,
-		@Value("${oauth2.kakao.redirect-uri}") String redirectUri
-	) {
-		String kakaoAuthUrl = String.format(
-			"https://kauth.kakao.com/oauth/authorize?response_type=code&client_id=%s&redirect_uri=%s",
-			clientId,
-			redirectUri
-		);
 
-		return ApiResponse.success(kakaoAuthUrl);
+	private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
+		Cookie cookie = new Cookie("refreshToken", refreshToken);
+		cookie.setHttpOnly(true);
+		cookie.setSecure(true);
+		cookie.setPath("/");
+		cookie.setMaxAge(30 * 24 * 60 * 60);  // 30일
+
+		response.addCookie(cookie);
 	}
 }
