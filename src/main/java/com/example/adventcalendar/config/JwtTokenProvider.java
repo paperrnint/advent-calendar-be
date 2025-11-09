@@ -1,3 +1,4 @@
+// File: src/main/java/com/example/adventcalendar/config/JwtTokenProvider.java
 package com.example.adventcalendar.config;
 
 import io.jsonwebtoken.Claims;
@@ -37,24 +38,6 @@ public class JwtTokenProvider {
 			.claim("email", email)
 			.claim("oauthProvider", oauthProvider)
 			.claim("type", "access")
-			.claim("hasUuid", true)  // uuid 존재 여부
-			.setIssuedAt(now)
-			.setExpiration(validity)
-			.signWith(secretKey, SignatureAlgorithm.HS512)
-			.compact();
-	}
-
-
-	public String createAccessTokenWithoutUuid(Long userId, String email, String oauthProvider) {
-		Date now = new Date();
-		Date validity = new Date(now.getTime() + accessTokenValidityInMilliseconds);
-
-		return Jwts.builder()
-			.setSubject(userId.toString())
-			.claim("email", email)
-			.claim("oauthProvider", oauthProvider)
-			.claim("type", "access")
-			.claim("hasUuid", false)  // uuid 미존재
 			.setIssuedAt(now)
 			.setExpiration(validity)
 			.signWith(secretKey, SignatureAlgorithm.HS512)
@@ -77,12 +60,6 @@ public class JwtTokenProvider {
 	public Long getUserId(String token) {
 		Claims claims = parseClaims(token);
 		return Long.parseLong(claims.getSubject());
-	}
-
-	public boolean hasUuid(String token) {
-		Claims claims = parseClaims(token);
-		Boolean hasUuid = claims.get("hasUuid", Boolean.class);
-		return hasUuid != null && hasUuid;
 	}
 
 	public boolean validateToken(String token) {

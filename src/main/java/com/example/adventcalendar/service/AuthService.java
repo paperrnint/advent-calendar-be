@@ -1,6 +1,8 @@
+// File: src/main/java/com/example/adventcalendar/service/AuthService.java
 package com.example.adventcalendar.service;
 
 import com.example.adventcalendar.config.JwtTokenProvider;
+import com.example.adventcalendar.constant.UserStatus;
 import com.example.adventcalendar.dto.request.UserCreateRequest;
 import com.example.adventcalendar.dto.response.LoginResponse;
 import com.example.adventcalendar.dto.response.UserCreateResponse;
@@ -8,7 +10,6 @@ import com.example.adventcalendar.entity.RefreshToken;
 import com.example.adventcalendar.entity.User;
 import com.example.adventcalendar.repository.RefreshTokenRepository;
 import com.example.adventcalendar.repository.UserRepository;
-import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -38,7 +39,13 @@ public class AuthService {
 		);
 
 		if (existingUser.isPresent()) {
-			return loginExistingUser(existingUser.get());
+			User user = existingUser.get();
+
+			if (user.getStatus() == UserStatus.PENDING) {
+				return createLoginResponseForPendingUser(user);
+			}
+
+			return loginExistingUser(user);
 		} else {
 			return createTemporaryUser(userInfo);
 		}
@@ -54,7 +61,13 @@ public class AuthService {
 		);
 
 		if (existingUser.isPresent()) {
-			return loginExistingUser(existingUser.get());
+			User user = existingUser.get();
+
+			if (user.getStatus() == UserStatus.PENDING) {
+				return createLoginResponseForPendingUser(user);
+			}
+
+			return loginExistingUser(user);
 		} else {
 			return createTemporaryUser(userInfo);
 		}
@@ -80,18 +93,38 @@ public class AuthService {
 		);
 	}
 
+	private LoginResponse createLoginResponseForPendingUser(User user) {
+		String accessToken = jwtTokenProvider.createAccessToken(
+			user.getId(),
+			user.getEmail(),
+			user.getOauthProvider()
+		);
+
+		String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
+
+		refreshTokenRepository.deleteByUserId(user.getId());
+		saveRefreshToken(user.getId(), refreshToken);
+
+		return LoginResponse.forNewUser(
+			accessToken,
+			refreshToken,
+			jwtTokenProvider.getAccessTokenValidityInSeconds()
+		);
+	}
+
 	private LoginResponse createTemporaryUser(OAuth2Service.OAuthUserInfo userInfo) {
 		User tempUser = User.builder()
 			.email(userInfo.getEmail())
 			.name(userInfo.getName())
 			.oauthProvider(userInfo.getOauthProvider())
 			.oauthId(userInfo.getOauthId())
+			.status(UserStatus.PENDING)
 			.isActive(true)
 			.build();
 
 		tempUser = userRepository.save(tempUser);
 
-		String accessToken = jwtTokenProvider.createAccessTokenWithoutUuid(
+		String accessToken = jwtTokenProvider.createAccessToken(
 			tempUser.getId(),
 			tempUser.getEmail(),
 			tempUser.getOauthProvider()
@@ -111,16 +144,17 @@ public class AuthService {
 	@Transactional
 	public UserCreateResponse completeUserRegistration(Long userId, UserCreateRequest request) {
 		User user = userRepository.findById(userId)
-			.orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
+			.orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다"));
 
-		if (user.getShareUuid() != null) {
-			throw new RuntimeException("이미 등록이 완료된 사용자입니다");
+		if (user.getStatus() == UserStatus.ACTIVE) {
+			throw new IllegalStateException("이미 등록이 완료된 사용자입니다");
 		}
 
-		user.setName(request.getName());
-		user.setSelectedColor(request.getSelectedColor());
-		user.generateShareUuid();  // UUID 생성
+		if (user.getStatus() != UserStatus.PENDING) {
+			throw new IllegalStateException("회원가입을 진행할 수 없는 상태입니다");
+		}
 
+		user.completeRegistration(request.getName(), request.getSelectedColor());
 		user = userRepository.save(user);
 
 		String accessToken = jwtTokenProvider.createAccessToken(
@@ -146,19 +180,19 @@ public class AuthService {
 	@Transactional
 	public String refreshAccessToken(String refreshToken) {
 		if (!jwtTokenProvider.validateToken(refreshToken)) {
-			throw new RuntimeException("유효하지 않은 RefreshToken입니다");
+			throw new IllegalArgumentException("유효하지 않은 RefreshToken입니다");
 		}
 
 		RefreshToken storedToken = refreshTokenRepository.findByToken(refreshToken)
-			.orElseThrow(() -> new RuntimeException("RefreshToken을 찾을 수 없습니다"));
+			.orElseThrow(() -> new IllegalArgumentException("RefreshToken을 찾을 수 없습니다"));
 
 		if (storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
 			refreshTokenRepository.delete(storedToken);
-			throw new RuntimeException("RefreshToken이 만료되었습니다");
+			throw new IllegalArgumentException("RefreshToken이 만료되었습니다");
 		}
 
 		User user = userRepository.findById(storedToken.getUserId())
-			.orElseThrow(() -> new RuntimeException("사용자를 찾을 수 없습니다"));
+			.orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다"));
 
 		return jwtTokenProvider.createAccessToken(
 			user.getId(),
@@ -177,9 +211,18 @@ public class AuthService {
 		RefreshToken refreshToken = RefreshToken.builder()
 			.userId(userId)
 			.token(token)
-			.expiresAt(LocalDateTime.now().plusDays(30))
+			.expiresAt(LocalDateTime.now().plusSeconds(jwtTokenProvider.getRefreshTokenValidityInSeconds()))
 			.build();
 
 		refreshTokenRepository.save(refreshToken);
+	}
+
+	public void validateUserActive(Long userId) {
+		User user = userRepository.findById(userId)
+			.orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다"));
+
+		if (user.getStatus() != UserStatus.ACTIVE) {
+			throw new IllegalStateException("회원가입을 완료해주세요");
+		}
 	}
 }
