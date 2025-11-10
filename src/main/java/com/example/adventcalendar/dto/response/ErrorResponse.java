@@ -12,9 +12,6 @@ public record ErrorResponse(
 	LocalDateTime timestamp,
 	String path
 ) {
-	/**
-	 * 에러 응답 생성
-	 */
 	public static ErrorResponse of(
 		int status,
 		String message,

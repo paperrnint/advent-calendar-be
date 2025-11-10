@@ -179,6 +179,8 @@ public class AuthController {
 
 		String newAccessToken = authService.refreshAccessToken(refreshToken);
 
+		setAccessTokenCookie(response, newAccessToken);
+
 		log.info("토큰 갱신 완료");
 
 		return ApiResponse.success(newAccessToken, "토큰이 갱신되었습니다");
