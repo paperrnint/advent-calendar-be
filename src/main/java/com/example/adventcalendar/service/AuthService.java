@@ -191,8 +191,21 @@ public class AuthService {
 
 	@Transactional
 	public void logout(String refreshToken) {
-		refreshTokenRepository.findByToken(refreshToken)
-			.ifPresent(refreshTokenRepository::delete);
+		log.debug("로그아웃 처리 시작 - refreshToken: {}", refreshToken);
+
+		Optional<RefreshToken> tokenOptional = refreshTokenRepository.findByToken(refreshToken);
+
+		if (tokenOptional.isPresent()) {
+			RefreshToken token = tokenOptional.get();
+			log.debug("RefreshToken 찾음 - id: {}, userId: {}", token.getId(), token.getUserId());
+
+			refreshTokenRepository.delete(token);
+			refreshTokenRepository.flush();
+
+			log.debug("RefreshToken 삭제 완료");
+		} else {
+			log.warn("RefreshToken을 찾을 수 없음 - token: {}", refreshToken);
+		}
 	}
 
 	private void saveRefreshToken(Long userId, String token) {
