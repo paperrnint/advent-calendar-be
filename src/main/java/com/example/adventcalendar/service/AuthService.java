@@ -113,7 +113,6 @@ public class AuthService {
 			.oauthProvider(userInfo.getOauthProvider())
 			.oauthId(userInfo.getOauthId())
 			.status(UserStatus.PENDING)
-			.isActive(true)
 			.build();
 
 		tempUser = userRepository.save(tempUser);

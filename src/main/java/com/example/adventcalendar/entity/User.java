@@ -58,11 +58,6 @@ public class User extends BaseEntity {
 	@Builder.Default
 	private UserStatus status = UserStatus.PENDING;
 
-	@Column(nullable = false)
-	@Builder.Default
-	private Boolean isActive = true;
-
-
 	public void completeRegistration(String name, String selectedColor) {
 		this.name = name;
 		this.selectedColor = selectedColor;
