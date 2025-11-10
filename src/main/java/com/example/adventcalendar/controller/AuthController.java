@@ -84,14 +84,17 @@ public class AuthController {
 
 			LoginResponse loginResponse = authService.handleNaverCallback(code, state);
 
-			setRefreshTokenCookie(response, loginResponse.refreshToken());
-
 			if (loginResponse.isExistingUser()) {
+				setRefreshTokenCookie(response, loginResponse.refreshToken());
+				setAccessTokenCookie(response, loginResponse.accessToken());
+
 				String redirectUrl = String.format("%s/%s", frontendUrl, loginResponse.userUuid());
 				log.info("기존 사용자 로그인 완료 - 리다이렉트: {}", redirectUrl);
 				return new RedirectView(redirectUrl);
 			} else {
-				String redirectUrl = String.format("%s/new?token=%s", frontendUrl, loginResponse.accessToken());
+				setTempTokenCookie(response, loginResponse.accessToken());
+
+				String redirectUrl = String.format("%s/new", frontendUrl);
 				log.info("신규 사용자 - 리다이렉트: {}", redirectUrl);
 				return new RedirectView(redirectUrl);
 			}
@@ -113,14 +116,17 @@ public class AuthController {
 
 			LoginResponse loginResponse = authService.handleKakaoCallback(code);
 
-			setRefreshTokenCookie(response, loginResponse.refreshToken());
-
 			if (loginResponse.isExistingUser()) {
+				setRefreshTokenCookie(response, loginResponse.refreshToken());
+				setAccessTokenCookie(response, loginResponse.accessToken());
+
 				String redirectUrl = String.format("%s/%s", frontendUrl, loginResponse.userUuid());
 				log.info("기존 사용자 로그인 완료 - 리다이렉트: {}", redirectUrl);
 				return new RedirectView(redirectUrl);
 			} else {
-				String redirectUrl = String.format("%s/new?token=%s", frontendUrl, loginResponse.accessToken());
+				setTempTokenCookie(response, loginResponse.accessToken());
+
+				String redirectUrl = String.format("%s/new", frontendUrl);
 				log.info("신규 사용자 - 리다이렉트: {}", redirectUrl);
 				return new RedirectView(redirectUrl);
 			}
@@ -130,7 +136,6 @@ public class AuthController {
 			return new RedirectView(frontendUrl + "/auth/error?message=" + e.getMessage());
 		}
 	}
-
 	@Operation(summary = "신규 사용자 등록", description = "신규 사용자의 이름과 색상을 등록합니다")
 	@PostMapping("/users")
 	public ApiResponse<UserCreateResponse> createUser(
@@ -143,11 +148,25 @@ public class AuthController {
 
 		UserCreateResponse userResponse = authService.completeUserRegistration(userId, request);
 
+		deleteTempTokenCookie(response);
+
 		setRefreshTokenCookie(response, userResponse.refreshToken());
+		setAccessTokenCookie(response, userResponse.accessToken());
 
 		log.info("신규 사용자 등록 완료 - userId: {}, uuid: {}", userId, userResponse.userUuid());
 
 		return ApiResponse.success(userResponse, "회원가입이 완료되었습니다");
+	}
+
+	private void deleteTempTokenCookie(HttpServletResponse response) {
+		Cookie cookie = new Cookie("tempToken", null);
+		cookie.setHttpOnly(true);
+		cookie.setSecure(true);
+		cookie.setPath("/");
+		cookie.setMaxAge(0);  // 즉시 삭제
+
+		response.addCookie(cookie);
+		log.debug("tempToken 쿠키 삭제 완료");
 	}
 
 	@Operation(summary = "토큰 갱신", description = "RefreshToken으로 새로운 AccessToken을 발급받습니다")
@@ -189,6 +208,25 @@ public class AuthController {
 		return ApiResponse.success();
 	}
 
+	private void setTempTokenCookie(HttpServletResponse response, String tempToken) {
+		Cookie cookie = new Cookie("tempToken", tempToken);
+		cookie.setHttpOnly(true);
+		cookie.setSecure(true);
+		cookie.setPath("/");
+		cookie.setMaxAge(5 * 60);  // 5분
+
+		response.addCookie(cookie);
+	}
+
+	private void setAccessTokenCookie(HttpServletResponse response, String accessToken) {
+		Cookie cookie = new Cookie("accessToken", accessToken);
+		cookie.setHttpOnly(true);
+		cookie.setSecure(true);
+		cookie.setPath("/");
+		cookie.setMaxAge(60 * 60);  // 1시간
+
+		response.addCookie(cookie);
+	}
 
 	private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
 		Cookie cookie = new Cookie("refreshToken", refreshToken);

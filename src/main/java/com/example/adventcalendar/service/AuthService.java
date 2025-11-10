@@ -94,21 +94,15 @@ public class AuthService {
 	}
 
 	private LoginResponse createLoginResponseForPendingUser(User user) {
-		String accessToken = jwtTokenProvider.createAccessToken(
+		String tempToken = jwtTokenProvider.createTempToken(
 			user.getId(),
 			user.getEmail(),
 			user.getOauthProvider()
 		);
 
-		String refreshToken = jwtTokenProvider.createRefreshToken(user.getId());
-
-		refreshTokenRepository.deleteByUserId(user.getId());
-		saveRefreshToken(user.getId(), refreshToken);
-
 		return LoginResponse.forNewUser(
-			accessToken,
-			refreshToken,
-			jwtTokenProvider.getAccessTokenValidityInSeconds()
+			tempToken,
+			5 * 60L
 		);
 	}
 
@@ -124,20 +118,15 @@ public class AuthService {
 
 		tempUser = userRepository.save(tempUser);
 
-		String accessToken = jwtTokenProvider.createAccessToken(
+		String tempToken = jwtTokenProvider.createTempToken(
 			tempUser.getId(),
 			tempUser.getEmail(),
 			tempUser.getOauthProvider()
 		);
 
-		String refreshToken = jwtTokenProvider.createRefreshToken(tempUser.getId());
-
-		saveRefreshToken(tempUser.getId(), refreshToken);
-
 		return LoginResponse.forNewUser(
-			accessToken,
-			refreshToken,
-			jwtTokenProvider.getAccessTokenValidityInSeconds()
+			tempToken,
+			5 * 60L  // 5분
 		);
 	}
 

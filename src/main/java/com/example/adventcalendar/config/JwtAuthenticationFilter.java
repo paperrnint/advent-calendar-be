@@ -4,6 +4,7 @@ import com.example.adventcalendar.config.JwtTokenProvider;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +41,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 				Claims claims = jwtTokenProvider.parseClaims(token);
 				String tokenType = claims.get("type", String.class);
 
-				if ("access".equals(tokenType)) {
+				if ("access".equals(tokenType) || "temp".equals(tokenType)) {
 					Long userId = Long.parseLong(claims.getSubject());
 					String email = claims.get("email", String.class);
 
@@ -52,7 +53,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 					SecurityContextHolder.getContext().setAuthentication(authentication);
 
-					log.debug("JWT 인증 성공 - userId: {}, email: {}", userId, email);
+					log.debug("JWT 인증 성공 - userId: {}, email: {}, type: {}", userId, email, tokenType);
 				}
 			}
 
@@ -65,9 +66,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 	private String resolveToken(HttpServletRequest request) {
 		String bearerToken = request.getHeader("Authorization");
-
 		if (StringUtils.hasText(bearerToken) && bearerToken.startsWith("Bearer ")) {
 			return bearerToken.substring(7);
+		}
+
+		if (request.getCookies() != null) {
+			for (Cookie cookie : request.getCookies()) {
+				if ("accessToken".equals(cookie.getName()) || "tempToken".equals(cookie.getName())) {
+					return cookie.getValue();
+				}
+			}
 		}
 
 		return null;

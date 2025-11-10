@@ -57,6 +57,21 @@ public class JwtTokenProvider {
 			.compact();
 	}
 
+	public String createTempToken(Long userId, String email, String oauthProvider) {
+		Date now = new Date();
+		Date validity = new Date(now.getTime() + 5 * 60 * 1000);  // 5분
+
+		return Jwts.builder()
+			.setSubject(userId.toString())
+			.claim("email", email)
+			.claim("oauthProvider", oauthProvider)
+			.claim("type", "temp")
+			.setIssuedAt(now)
+			.setExpiration(validity)
+			.signWith(secretKey, SignatureAlgorithm.HS512)
+			.compact();
+	}
+
 	public Long getUserId(String token) {
 		Claims claims = parseClaims(token);
 		return Long.parseLong(claims.getSubject());

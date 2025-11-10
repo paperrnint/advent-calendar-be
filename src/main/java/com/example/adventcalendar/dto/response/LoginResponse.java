@@ -24,13 +24,12 @@ public record LoginResponse(
 	}
 
 	public static LoginResponse forNewUser(
-		String accessToken,
-		String refreshToken,
+		String tempToken,
 		Long expiresInSeconds
 	) {
 		return new LoginResponse(
-			accessToken,
-			refreshToken,
+			tempToken,
+			null,
 			expiresInSeconds,
 			false,
 			null
