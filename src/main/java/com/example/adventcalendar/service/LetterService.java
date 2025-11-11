@@ -54,13 +54,16 @@ public class LetterService {
 
 		int currentDay = LocalDate.now(ZoneId.of("Asia/Seoul")).getDayOfMonth();
 
+		//12월 확인 주석처리
 		/*LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
 		if (today.getMonthValue() != 12) {
 			log.warn("12월이 아닙니다 - 현재: {}", today);
 			return List.of();
 		}*/
 
-		List<Letter> letters = letterRepository.findByUserIdAndDayLessThanEqual(user.getId(), currentDay);
+		// 현재 날짜 이하의 편지만 조회 주석처리
+		// List<Letter> letters = letterRepository.findByUserIdAndDayLessThanEqual(user.getId(), currentDay);
+		List<Letter> letters = letterRepository.findByUserId(user.getId());
 
 		log.info("편지 조회 완료 - userId: {}, currentDay: {}, count: {}", user.getId(), currentDay, letters.size());
 
