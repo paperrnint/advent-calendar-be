@@ -187,7 +187,7 @@ public class AuthController {
 
 		log.info("토큰 갱신 완료");
 
-		return ApiResponse.success(newAccessToken, "토큰이 갱신되었습니다");
+		return ApiResponse.success();
 	}
 
 	@Operation(summary = "로그아웃", description = "로그아웃하고 RefreshToken을 무효화합니다")
