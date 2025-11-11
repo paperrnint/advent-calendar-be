@@ -13,4 +13,6 @@ public interface LetterRepository extends JpaRepository<Letter, Long> {
 	List<Letter> findByUserId(Long userId);
 
 	List<Letter> findByUserIdAndDayLessThanEqual(Long userId, Integer day);
+
+	List<Letter> findByUserIdAndDay(Long userId, Integer day);
 }

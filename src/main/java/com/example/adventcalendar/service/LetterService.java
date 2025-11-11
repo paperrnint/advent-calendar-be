@@ -54,12 +54,12 @@ public class LetterService {
 
 		int currentDay = LocalDate.now(ZoneId.of("Asia/Seoul")).getDayOfMonth();
 
-		//12월 확인 주석처리
-		/*LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
-		if (today.getMonthValue() != 12) {
-			log.warn("12월이 아닙니다 - 현재: {}", today);
-			return List.of();
-		}*/
+		// 12월 확인 주석처리
+		// LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+		// if (today.getMonthValue() != 12) {
+		// 	log.warn("12월이 아닙니다 - 현재: {}", today);
+		// 	return List.of();
+		// }
 
 		// 현재 날짜 이하의 편지만 조회 주석처리
 		// List<Letter> letters = letterRepository.findByUserIdAndDayLessThanEqual(user.getId(), currentDay);
@@ -71,4 +71,41 @@ public class LetterService {
 			.map(LetterResponse::fromEntity)
 			.collect(Collectors.toList());
 	}
+	@Transactional(readOnly = true)
+	public List<LetterResponse> getLettersByDay(String uuid, Integer day, Long requestUserId) {
+		User user = userRepository.findByShareUuid(uuid)
+			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));
+
+		if (!user.getId().equals(requestUserId)) {
+			throw new IllegalArgumentException("본인의 편지만 조회할 수 있습니다");
+		}
+
+		if (day < 1 || day > 25) {
+			throw new IllegalArgumentException("날짜는 1일부터 25일까지입니다");
+		}
+
+		int currentDay = LocalDate.now(ZoneId.of("Asia/Seoul")).getDayOfMonth();
+
+		// 12월 확인 주석처리
+		// LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+		// if (today.getMonthValue() != 12) {
+		// 	log.warn("12월이 아닙니다 - 현재: {}", today);
+		// 	return List.of();
+		// }
+
+		// 현재 날짜 이하의 편지만 조회 주석처리
+		// if (day > currentDay) {
+		// 	log.warn("미래 날짜의 편지는 조회할 수 없습니다 - 요청 day: {}, 현재 day: {}", day, currentDay);
+		// 	throw new IllegalArgumentException("미래 날짜의 편지는 아직 열어볼 수 없습니다");
+		// }
+
+		List<Letter> letters = letterRepository.findByUserIdAndDay(user.getId(), day);
+
+		log.info("특정 날짜 편지 조회 완료 - userId: {}, day: {}, count: {}", user.getId(), day, letters.size());
+
+		return letters.stream()
+			.map(LetterResponse::fromEntity)
+			.collect(Collectors.toList());
+	}
+
 }

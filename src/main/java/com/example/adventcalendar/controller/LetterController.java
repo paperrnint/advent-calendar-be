@@ -76,4 +76,19 @@ public class LetterController {
 
 		return ApiResponse.success(letters);
 	}
+
+	@Operation(summary = "특정 날짜 편지 조회", description = "본인의 특정 날짜 편지를 조회합니다 (본인만 가능, 해당 날짜 또는 이전 날짜만)")
+	@GetMapping("/{uuid}/letters/{day}")
+	public ApiResponse<List<LetterResponse>> getLettersByDay(
+		@Parameter(description = "유저 UUID") @PathVariable String uuid,
+		@Parameter(description = "조회할 날짜 (1-25)") @PathVariable Integer day,
+		@Parameter(description = "현재 로그인된 사용자 ID", hidden = true) Authentication authentication
+	) {
+		Long userId = (Long) authentication.getPrincipal();
+		log.info("특정 날짜 편지 조회 요청 - uuid: {}, day: {}, userId: {}", uuid, day, userId);
+
+		List<LetterResponse> letters = letterService.getLettersByDay(uuid, day, userId);
+
+		return ApiResponse.success(letters);
+	}
 }
