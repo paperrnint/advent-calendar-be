@@ -4,6 +4,7 @@ import com.example.adventcalendar.dto.request.UserCreateRequest;
 import com.example.adventcalendar.dto.response.ApiResponse;
 import com.example.adventcalendar.dto.response.LoginResponse;
 import com.example.adventcalendar.dto.response.UserCreateResponse;
+import com.example.adventcalendar.dto.response.UserRegistrationResult;
 import com.example.adventcalendar.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -136,6 +137,7 @@ public class AuthController {
 			return new RedirectView(frontendUrl + "/auth/error?message=" + e.getMessage());
 		}
 	}
+
 	@Operation(summary = "신규 사용자 등록", description = "신규 사용자의 이름과 색상을 등록합니다")
 	@PostMapping("/users")
 	public ApiResponse<UserCreateResponse> createUser(
@@ -144,16 +146,18 @@ public class AuthController {
 		HttpServletResponse response
 	) {
 		Long userId = (Long) authentication.getPrincipal();
-		log.info("신규 사용자 등록 요청 - userId: {}, 이름: {}, 색상: {}", userId, request.getName(), request.getSelectedColor());
+		log.info("신규 사용자 등록 요청 - userId: {}, 이름: {}, 색상: {}", userId, request.getName(), request.getColor());
 
-		UserCreateResponse userResponse = authService.completeUserRegistration(userId, request);
+		UserRegistrationResult result = authService.completeUserRegistration(userId, request);
 
 		deleteTempTokenCookie(response);
 
-		setRefreshTokenCookie(response, userResponse.refreshToken());
-		setAccessTokenCookie(response, userResponse.accessToken());
+		setAccessTokenCookie(response, result.accessToken());
+		setRefreshTokenCookie(response, result.refreshToken());
 
-		log.info("신규 사용자 등록 완료 - userId: {}, uuid: {}", userId, userResponse.userUuid());
+		UserCreateResponse userResponse = UserCreateResponse.create(result.uuid());
+
+		log.info("신규 사용자 등록 완료 - userId: {}, uuid: {}", userId, result.uuid());
 
 		return ApiResponse.success(userResponse, "회원가입이 완료되었습니다");
 	}

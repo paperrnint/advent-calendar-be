@@ -23,5 +23,5 @@ public class UserCreateRequest {
 		regexp = "^(brown|orange|yellow|olive|pink|green|emerald|blue|navy|purple)$",
 		message = "유효한 색상을 선택해주세요"
 	)
-	private String selectedColor;
+	private String color;
 }

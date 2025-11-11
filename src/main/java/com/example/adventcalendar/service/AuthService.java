@@ -6,6 +6,7 @@ import com.example.adventcalendar.constant.UserStatus;
 import com.example.adventcalendar.dto.request.UserCreateRequest;
 import com.example.adventcalendar.dto.response.LoginResponse;
 import com.example.adventcalendar.dto.response.UserCreateResponse;
+import com.example.adventcalendar.dto.response.UserRegistrationResult;
 import com.example.adventcalendar.entity.RefreshToken;
 import com.example.adventcalendar.entity.User;
 import com.example.adventcalendar.repository.RefreshTokenRepository;
@@ -130,7 +131,7 @@ public class AuthService {
 	}
 
 	@Transactional
-	public UserCreateResponse completeUserRegistration(Long userId, UserCreateRequest request) {
+	public UserRegistrationResult completeUserRegistration(Long userId, UserCreateRequest request) {
 		User user = userRepository.findById(userId)
 			.orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다"));
 
@@ -142,7 +143,7 @@ public class AuthService {
 			throw new IllegalStateException("회원가입을 진행할 수 없는 상태입니다");
 		}
 
-		user.completeRegistration(request.getName(), request.getSelectedColor());
+		user.completeRegistration(request.getName(), request.getColor());
 		user = userRepository.save(user);
 
 		String accessToken = jwtTokenProvider.createAccessToken(
@@ -156,12 +157,10 @@ public class AuthService {
 		refreshTokenRepository.deleteByUserId(user.getId());
 		saveRefreshToken(user.getId(), refreshToken);
 
-		return UserCreateResponse.create(
-			user.getId(),
+		return UserRegistrationResult.create(
 			user.getShareUuid(),
 			accessToken,
-			refreshToken,
-			jwtTokenProvider.getAccessTokenValidityInSeconds()
+			refreshToken
 		);
 	}
 
