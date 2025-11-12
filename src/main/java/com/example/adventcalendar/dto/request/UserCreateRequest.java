@@ -20,7 +20,7 @@ public class UserCreateRequest {
 
 	@NotBlank(message = "색상 선택은 필수입니다")
 	@Pattern(
-		regexp = "^(brown|orange|yellow|olive|pink|green|emerald|blue|navy|purple)$",
+		regexp = "^(brown|red|orange|yellow|pink|lightGreen|green|blue|navy|violet)$",
 		message = "유효한 색상을 선택해주세요"
 	)
 	private String color;

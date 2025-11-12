@@ -47,7 +47,8 @@ public class SecurityConfig {
 				).permitAll()
 
 				.requestMatchers(
-					"/api/calendars/share/**"
+					"/api/users/**",
+					"/api/*/letters"
 				).permitAll()
 
 				.requestMatchers(

@@ -1,14 +1,15 @@
-// File: src/main/java/com/example/adventcalendar/service/AuthService.java
 package com.example.adventcalendar.service;
 
 import com.example.adventcalendar.config.JwtTokenProvider;
 import com.example.adventcalendar.constant.UserStatus;
 import com.example.adventcalendar.dto.request.UserCreateRequest;
 import com.example.adventcalendar.dto.response.LoginResponse;
-import com.example.adventcalendar.dto.response.UserCreateResponse;
 import com.example.adventcalendar.dto.response.UserRegistrationResult;
 import com.example.adventcalendar.entity.RefreshToken;
 import com.example.adventcalendar.entity.User;
+import com.example.adventcalendar.exception.ConflictException;
+import com.example.adventcalendar.exception.ResourceNotFoundException;
+import com.example.adventcalendar.exception.UnauthorizedException;
 import com.example.adventcalendar.repository.RefreshTokenRepository;
 import com.example.adventcalendar.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -133,10 +134,10 @@ public class AuthService {
 	@Transactional
 	public UserRegistrationResult completeUserRegistration(Long userId, UserCreateRequest request) {
 		User user = userRepository.findById(userId)
-			.orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다"));
+			.orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다"));
 
 		if (user.getStatus() == UserStatus.ACTIVE) {
-			throw new IllegalStateException("이미 등록이 완료된 사용자입니다");
+			throw new ConflictException("이미 등록이 완료된 사용자입니다");
 		}
 
 		if (user.getStatus() != UserStatus.PENDING) {
@@ -167,19 +168,19 @@ public class AuthService {
 	@Transactional
 	public String refreshAccessToken(String refreshToken) {
 		if (!jwtTokenProvider.validateToken(refreshToken)) {
-			throw new IllegalArgumentException("유효하지 않은 RefreshToken입니다");
+			throw new UnauthorizedException("유효하지 않은 RefreshToken입니다");
 		}
 
 		RefreshToken storedToken = refreshTokenRepository.findByToken(refreshToken)
-			.orElseThrow(() -> new IllegalArgumentException("RefreshToken을 찾을 수 없습니다"));
+			.orElseThrow(() -> new UnauthorizedException("RefreshToken을 찾을 수 없습니다"));
 
 		if (storedToken.getExpiresAt().isBefore(LocalDateTime.now())) {
 			refreshTokenRepository.delete(storedToken);
-			throw new IllegalArgumentException("RefreshToken이 만료되었습니다");
+			throw new UnauthorizedException("RefreshToken이 만료되었습니다");
 		}
 
 		User user = userRepository.findById(storedToken.getUserId())
-			.orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다"));
+			.orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다"));
 
 		return jwtTokenProvider.createAccessToken(
 			user.getId(),
@@ -219,7 +220,7 @@ public class AuthService {
 
 	public void validateUserActive(Long userId) {
 		User user = userRepository.findById(userId)
-			.orElseThrow(() -> new IllegalArgumentException("사용자를 찾을 수 없습니다"));
+			.orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다"));
 
 		if (user.getStatus() != UserStatus.ACTIVE) {
 			throw new IllegalStateException("회원가입을 완료해주세요");

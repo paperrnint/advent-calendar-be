@@ -17,7 +17,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "messages", indexes = {
+@Table(name = "letters", indexes = {
 	@Index(name = "idx_user_id", columnList = "user_id"),
 	@Index(name = "idx_user_day", columnList = "user_id, day")
 })
@@ -26,7 +26,7 @@ import lombok.Setter;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Message extends BaseEntity {
+public class Letter extends BaseEntity {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,11 +40,8 @@ public class Message extends BaseEntity {
 	private Integer day;
 
 	@Column(nullable = false, length = 100)
-	private String toName;
-
-	@Column(nullable = false, length = 100)
 	private String fromName;
 
 	@Column(nullable = false, columnDefinition = "LONGTEXT")
-	private String messageContent;
+	private String content;
 }
