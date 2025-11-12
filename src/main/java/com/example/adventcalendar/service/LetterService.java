@@ -16,6 +16,7 @@ import com.example.adventcalendar.exception.ForbiddenException;
 import com.example.adventcalendar.exception.ResourceNotFoundException;
 import com.example.adventcalendar.repository.LetterRepository;
 import com.example.adventcalendar.repository.UserRepository;
+import com.example.adventcalendar.util.XssUtils;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,16 +34,19 @@ public class LetterService {
 		User user = userRepository.findByShareUuid(uuid)
 			.orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 사용자입니다"));
 
+		String sanitizedContent = XssUtils.sanitizeHtml(request.getContent());
+		String sanitizedFromName = XssUtils.sanitizeHtml(request.getFromName());
+
 		Letter letter = Letter.builder()
 			.user(user)
 			.day(request.getDay())
-			.content(request.getContent())
-			.fromName(request.getFromName())
+			.content(sanitizedContent)
+			.fromName(sanitizedFromName)
 			.build();
 
 		letterRepository.save(letter);
 
-		log.info("편지 작성 완료 - userId: {}, day: {}, from: {}", user.getId(), request.getDay(), request.getFromName());
+		log.info("편지 작성 완료 - userId: {}, day: {}, from: {}", user.getId(), request.getDay(), sanitizedFromName);
 	}
 
 	@Transactional(readOnly = true)

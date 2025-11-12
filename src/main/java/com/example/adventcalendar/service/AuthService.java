@@ -12,6 +12,7 @@ import com.example.adventcalendar.exception.ResourceNotFoundException;
 import com.example.adventcalendar.exception.UnauthorizedException;
 import com.example.adventcalendar.repository.RefreshTokenRepository;
 import com.example.adventcalendar.repository.UserRepository;
+import com.example.adventcalendar.util.XssUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -144,7 +145,10 @@ public class AuthService {
 			throw new IllegalStateException("회원가입을 진행할 수 없는 상태입니다");
 		}
 
-		user.completeRegistration(request.getName(), request.getColor());
+		String sanitizedName = XssUtils.sanitizeHtml(request.getName());
+		String sanitizedColor = XssUtils.sanitizeHtml(request.getColor());
+
+		user.completeRegistration(sanitizedName, sanitizedColor);
 		user = userRepository.save(user);
 
 		String accessToken = jwtTokenProvider.createAccessToken(

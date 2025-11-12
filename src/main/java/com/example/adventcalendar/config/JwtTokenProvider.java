@@ -1,4 +1,3 @@
-// File: src/main/java/com/example/adventcalendar/config/JwtTokenProvider.java
 package com.example.adventcalendar.config;
 
 import io.jsonwebtoken.Claims;
