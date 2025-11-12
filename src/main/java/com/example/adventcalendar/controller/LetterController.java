@@ -15,6 +15,7 @@ import com.example.adventcalendar.dto.response.ApiResponse;
 import com.example.adventcalendar.dto.response.LetterResponse;
 import com.example.adventcalendar.dto.response.UserInfoResponse;
 import com.example.adventcalendar.entity.User;
+import com.example.adventcalendar.exception.ResourceNotFoundException;
 import com.example.adventcalendar.repository.UserRepository;
 import com.example.adventcalendar.service.LetterService;
 
@@ -43,7 +44,7 @@ public class LetterController {
 		log.info("유저 정보 조회 요청 - uuid: {}", uuid);
 
 		User user = userRepository.findByShareUuid(uuid)
-			.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자입니다"));
+			.orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 사용자입니다"));
 
 		UserInfoResponse response = UserInfoResponse.fromEntity(user);
 
