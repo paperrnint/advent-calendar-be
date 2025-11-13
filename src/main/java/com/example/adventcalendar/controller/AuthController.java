@@ -1,11 +1,16 @@
 package com.example.adventcalendar.controller;
 
+import com.example.adventcalendar.constant.UserStatus;
 import com.example.adventcalendar.dto.request.UserCreateRequest;
 import com.example.adventcalendar.dto.response.ApiResponse;
 import com.example.adventcalendar.dto.response.LoginResponse;
 import com.example.adventcalendar.dto.response.UserCreateResponse;
+import com.example.adventcalendar.dto.response.UserInfoResponse;
 import com.example.adventcalendar.dto.response.UserRegistrationResult;
+import com.example.adventcalendar.entity.User;
+import com.example.adventcalendar.exception.ResourceNotFoundException;
 import com.example.adventcalendar.service.AuthService;
+import com.example.adventcalendar.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +32,7 @@ import org.springframework.web.servlet.view.RedirectView;
 public class AuthController {
 
 	private final AuthService authService;
+	private final UserRepository userRepository;
 
 	@Value("${app.frontend.url}")
 	private String frontendUrl;
@@ -162,15 +168,24 @@ public class AuthController {
 		return ApiResponse.success(userResponse, "회원가입이 완료되었습니다");
 	}
 
-	private void deleteTempTokenCookie(HttpServletResponse response) {
-		Cookie cookie = new Cookie("tempToken", null);
-		cookie.setHttpOnly(true);
-		cookie.setSecure(true);
-		cookie.setPath("/");
-		cookie.setMaxAge(0);  // 즉시 삭제
+	@Operation(summary = "현재 사용자 정보 조회", description = "로그인한 사용자의 이름, 색상, UUID를 조회합니다")
+	@GetMapping("/me")
+	public ApiResponse<UserInfoResponse> getCurrentUser(
+		@Parameter(description = "현재 로그인된 사용자 ID", hidden = true) Authentication authentication
+	) {
+		Long userId = (Long) authentication.getPrincipal();
+		log.info("현재 사용자 정보 조회 요청 - userId: {}", userId);
 
-		response.addCookie(cookie);
-		log.debug("tempToken 쿠키 삭제 완료");
+		User user = userRepository.findById(userId)
+			.orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 사용자입니다"));
+
+		if (user.getStatus() != UserStatus.ACTIVE) {
+			throw new IllegalStateException("회원가입을 완료해주세요");
+		}
+
+		UserInfoResponse response = UserInfoResponse.fromEntity(user);
+
+		return ApiResponse.success(response);
 	}
 
 	@Operation(summary = "토큰 갱신", description = "RefreshToken으로 새로운 AccessToken을 발급받습니다")
@@ -242,5 +257,16 @@ public class AuthController {
 		cookie.setMaxAge(30 * 24 * 60 * 60);  // 30일
 
 		response.addCookie(cookie);
+	}
+
+	private void deleteTempTokenCookie(HttpServletResponse response) {
+		Cookie cookie = new Cookie("tempToken", null);
+		cookie.setHttpOnly(true);
+		cookie.setSecure(true);
+		cookie.setPath("/");
+		cookie.setMaxAge(0);  // 즉시 삭제
+
+		response.addCookie(cookie);
+		log.debug("tempToken 쿠키 삭제 완료");
 	}
 }
