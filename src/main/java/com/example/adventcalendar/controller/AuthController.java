@@ -9,6 +9,7 @@ import com.example.adventcalendar.dto.response.UserInfoResponse;
 import com.example.adventcalendar.dto.response.UserRegistrationResult;
 import com.example.adventcalendar.entity.User;
 import com.example.adventcalendar.exception.ResourceNotFoundException;
+import com.example.adventcalendar.exception.UnauthorizedException;
 import com.example.adventcalendar.service.AuthService;
 import com.example.adventcalendar.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -151,6 +152,10 @@ public class AuthController {
 		@Parameter(description = "사용자 정보", required = true) @Valid @RequestBody UserCreateRequest request,
 		HttpServletResponse response
 	) {
+		if (authentication == null || authentication.getPrincipal() == null) {
+			throw new UnauthorizedException("인증이 필요합니다");
+		}
+
 		Long userId = (Long) authentication.getPrincipal();
 		log.info("신규 사용자 등록 요청 - userId: {}, 이름: {}, 색상: {}", userId, request.getName(), request.getColor());
 
@@ -173,6 +178,10 @@ public class AuthController {
 	public ApiResponse<UserInfoResponse> getCurrentUser(
 		@Parameter(description = "현재 로그인된 사용자 ID", hidden = true) Authentication authentication
 	) {
+		if (authentication == null || authentication.getPrincipal() == null) {
+			throw new UnauthorizedException("인증이 필요합니다");
+		}
+
 		Long userId = (Long) authentication.getPrincipal();
 		log.info("현재 사용자 정보 조회 요청 - userId: {}", userId);
 

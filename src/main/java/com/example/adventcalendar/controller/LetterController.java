@@ -16,6 +16,7 @@ import com.example.adventcalendar.dto.response.LetterResponse;
 import com.example.adventcalendar.dto.response.UserInfoResponse;
 import com.example.adventcalendar.entity.User;
 import com.example.adventcalendar.exception.ResourceNotFoundException;
+import com.example.adventcalendar.exception.UnauthorizedException;
 import com.example.adventcalendar.repository.UserRepository;
 import com.example.adventcalendar.service.LetterService;
 
@@ -70,6 +71,10 @@ public class LetterController {
 		@Parameter(description = "유저 UUID") @PathVariable String uuid,
 		@Parameter(description = "현재 로그인된 사용자 ID", hidden = true) Authentication authentication
 	) {
+		if (authentication == null || authentication.getPrincipal() == null) {
+			throw new UnauthorizedException("인증이 필요합니다");
+		}
+
 		Long userId = (Long) authentication.getPrincipal();
 		log.info("편지 조회 요청 - uuid: {}, userId: {}", uuid, userId);
 
@@ -85,6 +90,10 @@ public class LetterController {
 		@Parameter(description = "조회할 날짜 (1-25)") @PathVariable Integer day,
 		@Parameter(description = "현재 로그인된 사용자 ID", hidden = true) Authentication authentication
 	) {
+		if (authentication == null || authentication.getPrincipal() == null) {
+			throw new UnauthorizedException("인증이 필요합니다");
+		}
+
 		Long userId = (Long) authentication.getPrincipal();
 		log.info("특정 날짜 편지 조회 요청 - uuid: {}, day: {}, userId: {}", uuid, day, userId);
 

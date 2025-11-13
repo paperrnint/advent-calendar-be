@@ -1,6 +1,5 @@
 package com.example.adventcalendar.config;
 
-import com.example.adventcalendar.config.JwtTokenProvider;
 import io.jsonwebtoken.Claims;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -43,7 +42,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 				if ("access".equals(tokenType) || "temp".equals(tokenType)) {
 					Long userId = Long.parseLong(claims.getSubject());
-					String email = claims.get("email", String.class);
 
 					Authentication authentication = new UsernamePasswordAuthenticationToken(
 						userId,
@@ -52,13 +50,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 					);
 
 					SecurityContextHolder.getContext().setAuthentication(authentication);
-
-					log.debug("JWT 인증 성공 - userId: {}, email: {}, type: {}", userId, email, tokenType);
+					log.debug("JWT 인증 성공 - userId: {}", userId);
 				}
 			}
 
 		} catch (Exception e) {
-			log.error("JWT 인증 실패", e);
+			log.error("JWT 처리 중 오류", e);
 		}
 
 		filterChain.doFilter(request, response);
