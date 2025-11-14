@@ -161,7 +161,12 @@ public class AuthController {
 
 		UserRegistrationResult result = authService.completeUserRegistration(userId, request);
 
-		deleteTempTokenCookie(response);
+		Cookie tempTokenCookie = new Cookie("tempToken", null);
+		tempTokenCookie.setHttpOnly(true);
+		tempTokenCookie.setSecure(true);
+		tempTokenCookie.setPath("/");
+		tempTokenCookie.setMaxAge(0);
+		response.addCookie(tempTokenCookie);
 
 		setAccessTokenCookie(response, result.accessToken());
 		setRefreshTokenCookie(response, result.refreshToken());
@@ -233,6 +238,13 @@ public class AuthController {
 		cookie.setMaxAge(0);
 		response.addCookie(cookie);
 
+		Cookie accessTokenCookie = new Cookie("accessToken", null);
+		accessTokenCookie.setHttpOnly(true);
+		accessTokenCookie.setSecure(true);
+		accessTokenCookie.setPath("/");
+		accessTokenCookie.setMaxAge(0);
+		response.addCookie(accessTokenCookie);
+
 		log.info("로그아웃 완료");
 
 		return ApiResponse.success();
@@ -266,16 +278,5 @@ public class AuthController {
 		cookie.setMaxAge(30 * 24 * 60 * 60);  // 30일
 
 		response.addCookie(cookie);
-	}
-
-	private void deleteTempTokenCookie(HttpServletResponse response) {
-		Cookie cookie = new Cookie("tempToken", null);
-		cookie.setHttpOnly(true);
-		cookie.setSecure(true);
-		cookie.setPath("/");
-		cookie.setMaxAge(0);  // 즉시 삭제
-
-		response.addCookie(cookie);
-		log.debug("tempToken 쿠키 삭제 완료");
 	}
 }
