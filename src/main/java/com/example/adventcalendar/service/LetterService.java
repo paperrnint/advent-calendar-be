@@ -5,6 +5,7 @@ import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,12 @@ public class LetterService {
 
 	private final LetterRepository letterRepository;
 	private final UserRepository userRepository;
+
+	@Value("${app.advent.validate-date:true}")
+	private boolean validateDate;
+
+	@Value("${app.advent.validate-month:true}")
+	private boolean validateMonth;
 
 	@Transactional
 	public void createLetter(String uuid, LetterCreateRequest request) {
@@ -60,16 +67,22 @@ public class LetterService {
 
 		int currentDay = LocalDate.now(ZoneId.of("Asia/Seoul")).getDayOfMonth();
 
-		// 12월 확인 주석처리
-		// LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
-		// if (today.getMonthValue() != 12) {
-		// 	log.warn("12월이 아닙니다 - 현재: {}", today);
-		// 	return List.of();
-		// }
+		// 12월 확인
+		if (validateMonth) {
+			LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+			if (today.getMonthValue() != 12) {
+				log.warn("12월이 아닙니다 - 현재: {}", today);
+				return List.of();
+			}
+		}
 
-		// 현재 날짜 이하의 편지만 조회 주석처리
-		// List<Letter> letters = letterRepository.findByUserIdAndDayLessThanEqual(user.getId(), currentDay);
-		List<Letter> letters = letterRepository.findByUserId(user.getId());
+		// 현재 날짜 이하의 편지만 조회
+		List<Letter> letters;
+		if (validateDate) {
+			letters = letterRepository.findByUserIdAndDayLessThanEqual(user.getId(), currentDay);
+		} else {
+			letters = letterRepository.findByUserId(user.getId());
+		}
 
 		log.info("편지 조회 완료 - userId: {}, currentDay: {}, count: {}", user.getId(), currentDay, letters.size());
 
@@ -93,18 +106,20 @@ public class LetterService {
 
 		int currentDay = LocalDate.now(ZoneId.of("Asia/Seoul")).getDayOfMonth();
 
-		// 12월 확인 주석처리
-		// LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
-		// if (today.getMonthValue() != 12) {
-		// 	log.warn("12월이 아닙니다 - 현재: {}", today);
-		// 	throw new IllegalArgumentException("어드벤트 캘린더는 12월에만 이용 가능합니다");
-		// }
+		// 12월 확인
+		if (validateMonth) {
+			LocalDate today = LocalDate.now(ZoneId.of("Asia/Seoul"));
+			if (today.getMonthValue() != 12) {
+				log.warn("12월이 아닙니다 - 현재: {}", today);
+				throw new IllegalArgumentException("어드벤트 캘린더는 12월에만 이용 가능합니다");
+			}
+		}
 
-		// 현재 날짜 이하의 편지만 조회 주석처리
-		// if (day > currentDay) {
-		// 	log.warn("미래 날짜의 편지는 조회할 수 없습니다 - 요청 day: {}, 현재 day: {}", day, currentDay);
-		// 	throw new IllegalArgumentException("미래 날짜의 편지는 아직 열어볼 수 없습니다");
-		// }
+		// 현재 날짜 이하의 편지만 조회
+		if (validateDate && day > currentDay) {
+			log.warn("미래 날짜의 편지는 조회할 수 없습니다 - 요청 day: {}, 현재 day: {}", day, currentDay);
+			throw new IllegalArgumentException("미래 날짜의 편지는 아직 열어볼 수 없습니다");
+		}
 
 		List<Letter> letters = letterRepository.findByUserIdAndDay(user.getId(), day);
 
@@ -114,5 +129,4 @@ public class LetterService {
 			.map(LetterResponse::fromEntity)
 			.collect(Collectors.toList());
 	}
-
 }
