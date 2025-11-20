@@ -2,7 +2,9 @@ package com.example.adventcalendar.service;
 
 import java.time.LocalDate;
 import java.time.ZoneId;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -128,5 +130,24 @@ public class LetterService {
 		return letters.stream()
 			.map(LetterResponse::fromEntity)
 			.collect(Collectors.toList());
+	}
+
+	@Transactional(readOnly = true)
+	public Map<Integer, Long> getLetterCountsByUuid(String uuid) {
+		User user = userRepository.findByShareUuid(uuid)
+			.orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 사용자입니다"));
+
+		List<Object[]> results = letterRepository.countByUserIdGroupByDay(user.getId());
+
+		Map<Integer, Long> counts = new HashMap<>();
+		for (Object[] result : results) {
+			Integer day = (Integer) result[0];
+			Long count = (Long) result[1];
+			counts.put(day, count);
+		}
+
+		log.info("날짜별 편지 개수 조회 완료 - userId: {}, totalDays: {}", user.getId(), counts.size());
+
+		return counts;
 	}
 }

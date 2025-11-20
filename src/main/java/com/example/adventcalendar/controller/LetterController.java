@@ -1,6 +1,7 @@
 package com.example.adventcalendar.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.example.adventcalendar.dto.request.LetterCreateRequest;
 import com.example.adventcalendar.dto.response.ApiResponse;
+import com.example.adventcalendar.dto.response.LetterCountResponse;
 import com.example.adventcalendar.dto.response.LetterResponse;
 import com.example.adventcalendar.dto.response.UserInfoResponse;
 import com.example.adventcalendar.entity.User;
@@ -100,5 +102,18 @@ public class LetterController {
 		List<LetterResponse> letters = letterService.getLettersByDay(uuid, day, userId);
 
 		return ApiResponse.success(letters);
+	}
+
+	@Operation(summary = "날짜별 편지 개수 조회", description = "모든 날짜(1-25일)의 편지 개수를 조회합니다 (인증 불필요)")
+	@GetMapping("/{uuid}/letters/count")
+	public ApiResponse<LetterCountResponse> getLetterCounts(
+		@Parameter(description = "유저 UUID") @PathVariable String uuid
+	) {
+		log.info("날짜별 편지 개수 조회 요청 - uuid: {}", uuid);
+
+		Map<Integer, Long> counts = letterService.getLetterCountsByUuid(uuid);
+		LetterCountResponse response = LetterCountResponse.create(counts);
+
+		return ApiResponse.success(response);
 	}
 }
