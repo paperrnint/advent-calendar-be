@@ -65,6 +65,7 @@ public class SecurityConfig {
 
 				.requestMatchers(HttpMethod.POST, "/api/*/letters").permitAll()
 
+				.requestMatchers(HttpMethod.GET, "/api/{uuid}/letters/count").permitAll()
 				.requestMatchers(
 					"/swagger-ui/**",
 					"/v3/api-docs/**",
