@@ -19,7 +19,7 @@ import lombok.Setter;
 @Entity
 @Table(name = "letters", indexes = {
 	@Index(name = "idx_user_id", columnList = "user_id"),
-	@Index(name = "idx_user_day", columnList = "user_id, day")
+	@Index(name = "idx_user_day", columnList = "user_id, letter_day")
 })
 @Getter
 @Setter
@@ -36,7 +36,7 @@ public class Letter extends BaseEntity {
 	@JoinColumn(name = "user_id", nullable = false)
 	private User user;
 
-	@Column(nullable = false)
+	@Column(name = "letter_day", nullable = false)  // 예약어 피하기
 	private Integer day;
 
 	@Column(nullable = false, length = 100)
