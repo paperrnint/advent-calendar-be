@@ -205,10 +205,14 @@ public class AuthController {
 	@Operation(summary = "토큰 갱신", description = "RefreshToken으로 새로운 AccessToken을 발급받습니다")
 	@PostMapping("/refresh")
 	public ApiResponse<String> refreshToken(
-		@CookieValue(name = "refreshToken", required = true) String refreshToken,
+		@CookieValue(name = "refreshToken", required = false) String refreshToken,
 		HttpServletResponse response
 	) {
 		log.info("토큰 갱신 요청");
+
+		if (refreshToken == null) {
+			throw new UnauthorizedException("RefreshToken이 필요합니다");
+		}
 
 		String newAccessToken = authService.refreshAccessToken(refreshToken);
 
