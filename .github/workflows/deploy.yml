@@ -35,43 +35,11 @@ jobs:
           target: "/home/ubuntu/app"
           strip_components: 2
 
-      - name: Deploy to EC2
+      - name: Execute deploy script
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          command_timeout: 30m
           script: |
-            cd /home/ubuntu/app
-            
-            # 기존 프로세스 종료
-            PID=$(pgrep -f 'java -jar' || echo "")
-            if [ ! -z "$PID" ]; then
-              echo "기존 프로세스 종료: $PID"
-              kill -9 $PID
-              sleep 3
-            fi
-            
-            # 환경변수 로드
-            source ~/.bashrc
-            
-            # JAR 파일 실행
-            JAR_FILE=$(ls -t *.jar | head -1)
-            echo "실행할 JAR: $JAR_FILE"
-            
-            nohup java -jar -Dspring.profiles.active=prod \
-              -Xmx400m -Xms400m \
-              $JAR_FILE > application.log 2>&1 &
-            
-            sleep 10
-            
-            # 프로세스 확인
-            if pgrep -f "java -jar" > /dev/null; then
-              echo "배포 성공!"
-              ps aux | grep java | grep -v grep
-            else
-              echo "배포 실패! 로그 확인:"
-              tail -50 application.log
-              exit 1
-            fi
+            bash /home/ubuntu/app/deploy.sh
