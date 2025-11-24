@@ -143,7 +143,9 @@ public class SecurityConfig {
 			"http://localhost:3000",
 			"http://localhost:3001",
 			"http://2025-advent-calendar.site",
-			"https://2025-advent-calendar.site"
+			"https://2025-advent-calendar.site",
+			"http://www.2025-advent-calendar.site",
+			"https://www.2025-advent-calendar.site"
 		));
 
 		configuration.setAllowedMethods(Arrays.asList(
