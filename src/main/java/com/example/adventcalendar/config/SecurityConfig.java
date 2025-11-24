@@ -68,8 +68,11 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.GET, "/api/{uuid}/letters/count").permitAll()
 				.requestMatchers(
 					"/swagger-ui/**",
+					"/swagger-ui.html",
 					"/v3/api-docs/**",
 					"/swagger-resources/**",
+					"/webjars/**",
+					"/swagger-ui/index.html",
 					"/actuator/**"
 				).permitAll()
 
