@@ -141,7 +141,9 @@ public class SecurityConfig {
 
 		configuration.setAllowedOrigins(Arrays.asList(
 			"http://localhost:3000",
-			"http://localhost:3001"
+			"http://localhost:3001",
+			"http://2025-advent-calendar.site",
+			"https://2025-advent-calendar.site"
 		));
 
 		configuration.setAllowedMethods(Arrays.asList(
