@@ -1,0 +1,22 @@
+# 로컬 개발 환경 설정
+app:
+  advent:
+    validate-date: false  # 로컬에서는 날짜 검증 안함
+    validate-month: false  # 로컬에서는 12월 검증 안함
+
+# 로컬 환경에서는 더 자세한 로그 출력
+logging:
+  level:
+    root: INFO
+    com.example.adventcalendar: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.security: DEBUG
+
+# 로컬 JPA 설정
+spring:
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true

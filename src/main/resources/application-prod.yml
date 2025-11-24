@@ -1,0 +1,26 @@
+# 프로덕션 환경 설정
+app:
+  advent:
+    validate-date: true  # 프로덕션에서는 날짜 검증 함
+    validate-month: true  # 프로덕션에서는 12월 검증 함
+
+# 프로덕션 환경에서는 최소한의 로그만 출력
+logging:
+  level:
+    root: INFO
+    com.example.adventcalendar: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.springframework.security: INFO
+
+# 프로덕션 JPA 설정
+spring:
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+
+# 프로덕션 서버 설정 (필요시 포트 변경 가능)
+server:
+  port: 8080
