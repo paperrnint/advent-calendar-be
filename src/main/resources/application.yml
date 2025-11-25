@@ -8,7 +8,7 @@ spring:
   # JPA/Hibernate
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQL8Dialect
@@ -98,3 +98,6 @@ management:
 app:
   frontend:
     url: ${APP_FRONTEND_URL}
+
+  cookie:
+    domain: ${COOKIE_DOMAIN:}
