@@ -90,3 +90,7 @@ jacocoTestReport {
 
 	finalizedBy jacocoTestCoverageVerification
 }
+
+jar {
+	enabled = false
+}

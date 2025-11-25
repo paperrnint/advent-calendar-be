@@ -1,0 +1,103 @@
+spring:
+  application:
+    name: adventcalendar
+
+  profiles:
+    active: local
+
+  # JPA/Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        format_sql: true
+        use_sql_comments: true
+    show-sql: false
+    open-in-view: false
+
+  # DataSource
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 20000
+
+  # Servlet
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  # Jackson
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+    time-zone: Asia/Seoul
+
+# OAuth2 설정
+oauth2:
+  naver:
+    client-id: ${NAVER_CLIENT_ID}
+    client-secret: ${NAVER_CLIENT_SECRET}
+    redirect-uri: ${NAVER_REDIRECT_URI}
+
+  kakao:
+    client-id: ${KAKAO_CLIENT_ID}
+    client-secret: ${KAKAO_CLIENT_SECRET}
+    redirect-uri: ${KAKAO_REDIRECT_URI}
+
+# JWT
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-validity-in-seconds: 3600  # 1시간
+  refresh-token-validity-in-seconds: 604800  # 7일
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.example.adventcalendar: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+# Server
+server:
+  port: 8080
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    min-response-size: 1024
+
+# Swagger 설정
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    tags-sorter: alpha
+    operations-sorter: alpha
+  show-actuator: true
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+app:
+  frontend:
+    url: ${APP_FRONTEND_URL}
+
+  cookie:
+    domain: ${COOKIE_DOMAIN:}

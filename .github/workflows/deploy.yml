@@ -3,7 +3,7 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main  # main 브랜치에 push할 때 실행
+      - main
 
 jobs:
   deploy:
@@ -24,18 +24,6 @@ jobs:
 
       - name: Build with Gradle
         run: ./gradlew clean build -x test
-        env:
-          DB_USERNAME: ${{ secrets.DB_USERNAME }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
-          DB_URL: ${{ secrets.DB_URL }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
-          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
-          NAVER_REDIRECT_URI: ${{ secrets.NAVER_REDIRECT_URI }}
-          KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
-          KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
-          KAKAO_REDIRECT_URI: ${{ secrets.KAKAO_REDIRECT_URI }}
-          APP_FRONTEND_URL: ${{ secrets.APP_FRONTEND_URL }}
 
       - name: Copy JAR to EC2
         uses: appleboy/scp-action@master
@@ -47,35 +35,11 @@ jobs:
           target: "/home/ubuntu/app"
           strip_components: 2
 
-      - name: Deploy to EC2
+      - name: Execute deploy script
         uses: appleboy/ssh-action@master
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # 기존 프로세스 종료
-            sudo pkill -f 'java -jar' || true
-            
-            # 환경변수 로드
-            export DB_USERNAME=${{ secrets.DB_USERNAME }}
-            export DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            export DB_URL=${{ secrets.DB_URL }}
-            export JWT_SECRET=${{ secrets.JWT_SECRET }}
-            export NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }}
-            export NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }}
-            export NAVER_REDIRECT_URI=${{ secrets.NAVER_REDIRECT_URI }}
-            export KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}
-            export KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}
-            export KAKAO_REDIRECT_URI=${{ secrets.KAKAO_REDIRECT_URI }}
-            export APP_FRONTEND_URL=${{ secrets.APP_FRONTEND_URL }}
-            
-            # 새 버전 실행
-            cd /home/ubuntu/app
-            nohup java -jar -Dspring.profiles.active=prod \
-              -Xmx400m -Xms400m \
-              *.jar > application.log 2>&1 &
-            
-            # 프로세스 확인
-            sleep 5
-            ps aux | grep java
+            bash /home/ubuntu/app/deploy.sh

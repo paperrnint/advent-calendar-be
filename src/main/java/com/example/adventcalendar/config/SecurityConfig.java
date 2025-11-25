@@ -68,8 +68,11 @@ public class SecurityConfig {
 				.requestMatchers(HttpMethod.GET, "/api/{uuid}/letters/count").permitAll()
 				.requestMatchers(
 					"/swagger-ui/**",
+					"/swagger-ui.html",
 					"/v3/api-docs/**",
 					"/swagger-resources/**",
+					"/webjars/**",
+					"/swagger-ui/index.html",
 					"/actuator/**"
 				).permitAll()
 
@@ -138,7 +141,11 @@ public class SecurityConfig {
 
 		configuration.setAllowedOrigins(Arrays.asList(
 			"http://localhost:3000",
-			"http://localhost:3001"
+			"http://localhost:3001",
+			"http://2025-advent-calendar.site",
+			"https://2025-advent-calendar.site",
+			"http://www.2025-advent-calendar.site",
+			"https://www.2025-advent-calendar.site"
 		));
 
 		configuration.setAllowedMethods(Arrays.asList(

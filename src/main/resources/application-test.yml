@@ -1,0 +1,51 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        format_sql: true
+    show-sql: true
+
+  flyway:
+    enabled: false
+
+# JWT 테스트 설정
+jwt:
+  secret: test-secret-key-for-jwt-token-generation-must-be-long-enough-for-hs512-algorithm
+  access-token-validity-in-seconds: 3600
+  refresh-token-validity-in-seconds: 604800
+
+# OAuth2 테스트 설정
+oauth2:
+  naver:
+    client-id: test-naver-client-id
+    client-secret: test-naver-client-secret
+    redirect-uri: http://localhost:8080/api/auth/oauth/naver/callback
+
+  kakao:
+    client-id: test-kakao-client-id
+    client-secret: test-kakao-client-secret
+    redirect-uri: http://localhost:8080/api/auth/oauth/kakao/callback
+
+# 어드벤트 캘린더 설정
+app:
+  advent:
+    validate-date: false
+    validate-month: false
+  frontend:
+    url: http://localhost:3000
+
+# 로깅 설정
+logging:
+  level:
+    root: INFO
+    com.example.adventcalendar: DEBUG
+    org.hibernate.SQL: DEBUG
