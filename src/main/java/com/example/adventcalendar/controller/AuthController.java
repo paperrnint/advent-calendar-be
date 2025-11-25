@@ -24,6 +24,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
+import org.springframework.http.ResponseCookie;
 
 @Slf4j
 @Tag(name = "인증", description = "OAuth2 소셜 로그인 API")
@@ -161,12 +162,15 @@ public class AuthController {
 
 		UserRegistrationResult result = authService.completeUserRegistration(userId, request);
 
-		Cookie tempTokenCookie = new Cookie("tempToken", null);
-		tempTokenCookie.setHttpOnly(true);
-		tempTokenCookie.setSecure(true);
-		tempTokenCookie.setPath("/");
-		tempTokenCookie.setMaxAge(0);
-		response.addCookie(tempTokenCookie);
+		// tempToken 쿠키 삭제
+		ResponseCookie deleteTempToken = ResponseCookie.from("tempToken", "")
+			.httpOnly(true)
+			.secure(true)
+			.path("/")
+			.maxAge(0)
+			.sameSite("Strict")
+			.build();
+		response.addHeader("Set-Cookie", deleteTempToken.toString());
 
 		setAccessTokenCookie(response, result.accessToken());
 		setRefreshTokenCookie(response, result.refreshToken());
@@ -235,19 +239,25 @@ public class AuthController {
 			authService.logout(refreshToken);
 		}
 
-		Cookie cookie = new Cookie("refreshToken", null);
-		cookie.setHttpOnly(true);
-		cookie.setSecure(true);
-		cookie.setPath("/");
-		cookie.setMaxAge(0);
-		response.addCookie(cookie);
+		// 쿠키 삭제 - ResponseCookie 사용
+		ResponseCookie deleteRefreshToken = ResponseCookie.from("refreshToken", "")
+			.httpOnly(true)
+			.secure(true)
+			.path("/")
+			.maxAge(0)
+			.sameSite("Strict")
+			.build();
 
-		Cookie accessTokenCookie = new Cookie("accessToken", null);
-		accessTokenCookie.setHttpOnly(true);
-		accessTokenCookie.setSecure(true);
-		accessTokenCookie.setPath("/");
-		accessTokenCookie.setMaxAge(0);
-		response.addCookie(accessTokenCookie);
+		ResponseCookie deleteAccessToken = ResponseCookie.from("accessToken", "")
+			.httpOnly(true)
+			.secure(true)
+			.path("/")
+			.maxAge(0)
+			.sameSite("Strict")
+			.build();
+
+		response.addHeader("Set-Cookie", deleteRefreshToken.toString());
+		response.addHeader("Set-Cookie", deleteAccessToken.toString());
 
 		log.info("로그아웃 완료");
 
@@ -255,32 +265,38 @@ public class AuthController {
 	}
 
 	private void setTempTokenCookie(HttpServletResponse response, String tempToken) {
-		Cookie cookie = new Cookie("tempToken", tempToken);
-		cookie.setHttpOnly(true);
-		cookie.setSecure(true);
-		cookie.setPath("/");
-		cookie.setMaxAge(5 * 60);  // 5분
+		ResponseCookie cookie = ResponseCookie.from("tempToken", tempToken)
+			.httpOnly(true)
+			.secure(true)
+			.path("/")
+			.maxAge(5 * 60)  // 5분
+			.sameSite("Strict")
+			.build();
 
-		response.addCookie(cookie);
+		response.addHeader("Set-Cookie", cookie.toString());
 	}
 
 	private void setAccessTokenCookie(HttpServletResponse response, String accessToken) {
-		Cookie cookie = new Cookie("accessToken", accessToken);
-		cookie.setHttpOnly(true);
-		cookie.setSecure(true);
-		cookie.setPath("/");
-		cookie.setMaxAge(60 * 60);  // 1시간
+		ResponseCookie cookie = ResponseCookie.from("accessToken", accessToken)
+			.httpOnly(true)
+			.secure(true)
+			.path("/")
+			.maxAge(60 * 60)  // 1시간
+			.sameSite("Strict")
+			.build();
 
-		response.addCookie(cookie);
+		response.addHeader("Set-Cookie", cookie.toString());
 	}
 
 	private void setRefreshTokenCookie(HttpServletResponse response, String refreshToken) {
-		Cookie cookie = new Cookie("refreshToken", refreshToken);
-		cookie.setHttpOnly(true);
-		cookie.setSecure(true);
-		cookie.setPath("/");
-		cookie.setMaxAge(30 * 24 * 60 * 60);  // 30일
+		ResponseCookie cookie = ResponseCookie.from("refreshToken", refreshToken)
+			.httpOnly(true)
+			.secure(true)
+			.path("/")
+			.maxAge(30 * 24 * 60 * 60)  // 30일
+			.sameSite("Strict")
+			.build();
 
-		response.addCookie(cookie);
+		response.addHeader("Set-Cookie", cookie.toString());
 	}
 }

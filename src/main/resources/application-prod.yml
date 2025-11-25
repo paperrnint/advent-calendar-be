@@ -4,6 +4,9 @@ app:
     validate-date: true  # 프로덕션에서는 날짜 검증 함
     validate-month: true  # 프로덕션에서는 12월 검증 함
 
+  cookie:
+    domain: 2025-advent-calendar.site
+
 # 프로덕션 환경에서는 최소한의 로그만 출력
 logging:
   level:
