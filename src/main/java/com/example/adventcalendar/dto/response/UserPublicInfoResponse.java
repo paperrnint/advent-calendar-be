@@ -11,19 +11,17 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class UserInfoResponse {
+public class UserPublicInfoResponse {
 
 	private String name;
 	private String color;
 	private String uuid;
-	private String email;
 
-	public static UserInfoResponse fromEntity(User user) {
-		return UserInfoResponse.builder()
+	public static UserPublicInfoResponse fromEntity(User user) {
+		return UserPublicInfoResponse.builder()
 			.name(user.getName())
 			.color(user.getSelectedColor())
 			.uuid(user.getShareUuid())
-			.email(user.getEmail())
 			.build();
 	}
 }
