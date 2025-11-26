@@ -175,9 +175,9 @@ public class AuthController {
 		setAccessTokenCookie(response, result.accessToken());
 		setRefreshTokenCookie(response, result.refreshToken());
 
-		UserCreateResponse userResponse = UserCreateResponse.create(result.uuid());
+		UserCreateResponse userResponse = UserCreateResponse.fromEntity(result.user());
 
-		log.info("신규 사용자 등록 완료 - userId: {}, uuid: {}", userId, result.uuid());
+		log.info("신규 사용자 등록 완료 - userId: {}, uuid: {}", userId, result.user().getShareUuid());
 
 		return ApiResponse.success(userResponse, "회원가입이 완료되었습니다");
 	}

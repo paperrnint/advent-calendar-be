@@ -163,7 +163,7 @@ public class AuthService {
 		saveRefreshToken(user.getId(), refreshToken);
 
 		return UserRegistrationResult.create(
-			user.getShareUuid(),
+			user,
 			accessToken,
 			refreshToken
 		);

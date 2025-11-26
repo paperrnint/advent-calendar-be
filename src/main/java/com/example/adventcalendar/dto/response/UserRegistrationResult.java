@@ -1,15 +1,17 @@
 package com.example.adventcalendar.dto.response;
 
+import com.example.adventcalendar.entity.User;
+
 public record UserRegistrationResult(
-	String uuid,
+	User user,
 	String accessToken,
 	String refreshToken
 ) {
 	public static UserRegistrationResult create(
-		String uuid,
+		User user,
 		String accessToken,
 		String refreshToken
 	) {
-		return new UserRegistrationResult(uuid, accessToken, refreshToken);
+		return new UserRegistrationResult(user, accessToken, refreshToken);
 	}
 }
