@@ -307,7 +307,8 @@ class AuthServiceTest {
 
 			// then
 			assertThat(result).isNotNull();
-			assertThat(result.uuid()).isNotNull();
+			assertThat(result.user()).isNotNull();
+			assertThat(result.user().getShareUuid()).isNotNull();
 			assertThat(result.accessToken()).isEqualTo(accessToken);
 			assertThat(result.refreshToken()).isEqualTo(refreshToken);
 
