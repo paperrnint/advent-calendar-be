@@ -16,6 +16,7 @@ import com.example.adventcalendar.dto.response.ApiResponse;
 import com.example.adventcalendar.dto.response.LetterCountResponse;
 import com.example.adventcalendar.dto.response.LetterResponse;
 import com.example.adventcalendar.dto.response.UserInfoResponse;
+import com.example.adventcalendar.dto.response.UserPublicInfoResponse;
 import com.example.adventcalendar.entity.User;
 import com.example.adventcalendar.exception.ResourceNotFoundException;
 import com.example.adventcalendar.exception.UnauthorizedException;
@@ -41,7 +42,7 @@ public class LetterController {
 
 	@Operation(summary = "유저 정보 조회", description = "UUID로 유저의 이름, 색상, UUID를 조회합니다")
 	@GetMapping("/users/{uuid}")
-	public ApiResponse<UserInfoResponse> getUserInfo(
+	public ApiResponse<UserPublicInfoResponse> getUserInfo(
 		@Parameter(description = "유저 UUID") @PathVariable String uuid
 	) {
 		log.info("유저 정보 조회 요청 - uuid: {}", uuid);
@@ -49,7 +50,7 @@ public class LetterController {
 		User user = userRepository.findByShareUuid(uuid)
 			.orElseThrow(() -> new ResourceNotFoundException("존재하지 않는 사용자입니다"));
 
-		UserInfoResponse response = UserInfoResponse.fromEntity(user);
+		UserPublicInfoResponse response = UserPublicInfoResponse.fromEntity(user);
 
 		return ApiResponse.success(response);
 	}
