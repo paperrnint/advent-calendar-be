@@ -524,6 +524,73 @@ class LetterRepositoryTest {
 	}
 
 	@Nested
+	@DisplayName("deleteByUserId 테스트")
+	class DeleteByUserId {
+
+		@Test
+		@DisplayName("사용자 ID로 모든 편지 삭제 성공")
+		void deleteByUserId_Success() {
+			// given
+			letterRepository.save(letter1);
+			letterRepository.save(letter2);
+			letterRepository.save(letter3);
+
+			assertThat(letterRepository.findByUserId(user.getId())).hasSize(3);
+
+			// when
+			letterRepository.deleteByUserId(user.getId());
+			letterRepository.flush();
+
+			// then
+			assertThat(letterRepository.findByUserId(user.getId())).isEmpty();
+		}
+
+		@Test
+		@DisplayName("편지가 없는 사용자 삭제 시도해도 예외 없음")
+		void deleteByUserId_NoLetters_NoException() {
+			// when & then
+			assertThatCode(() -> {
+				letterRepository.deleteByUserId(user.getId());
+				letterRepository.flush();
+			}).doesNotThrowAnyException();
+		}
+
+		@Test
+		@DisplayName("특정 사용자의 편지만 삭제하고 다른 사용자 편지는 유지")
+		void deleteByUserId_OnlyDeletesSpecificUser() {
+			// given
+			User anotherUser = User.builder()
+				.email("another@example.com")
+				.name("다른사용자")
+				.oauthProvider("KAKAO")
+				.oauthId("kakao456")
+				.selectedColor("blue")
+				.shareUuid("uuid-456")
+				.status(UserStatus.ACTIVE)
+				.build();
+			anotherUser = userRepository.save(anotherUser);
+
+			letterRepository.save(letter1); // user의 편지
+
+			Letter anotherLetter = Letter.builder()
+				.user(anotherUser)
+				.day(5)
+				.content("다른 사용자 편지")
+				.fromName("다른친구")
+				.build();
+			letterRepository.save(anotherLetter);
+
+			// when
+			letterRepository.deleteByUserId(user.getId());
+			letterRepository.flush();
+
+			// then
+			assertThat(letterRepository.findByUserId(user.getId())).isEmpty();
+			assertThat(letterRepository.findByUserId(anotherUser.getId())).hasSize(1);
+		}
+	}
+
+	@Nested
 	@DisplayName("기타 기능 테스트")
 	class MiscellaneousTests {
 
