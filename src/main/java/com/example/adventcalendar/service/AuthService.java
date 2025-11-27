@@ -10,6 +10,7 @@ import com.example.adventcalendar.entity.User;
 import com.example.adventcalendar.exception.ConflictException;
 import com.example.adventcalendar.exception.ResourceNotFoundException;
 import com.example.adventcalendar.exception.UnauthorizedException;
+import com.example.adventcalendar.repository.LetterRepository;
 import com.example.adventcalendar.repository.RefreshTokenRepository;
 import com.example.adventcalendar.repository.UserRepository;
 import com.example.adventcalendar.util.XssUtils;
@@ -30,6 +31,7 @@ public class AuthService {
 	private final JwtTokenProvider jwtTokenProvider;
 	private final UserRepository userRepository;
 	private final RefreshTokenRepository refreshTokenRepository;
+	private final LetterRepository letterRepository;
 
 
 	@Transactional
@@ -210,6 +212,20 @@ public class AuthService {
 		} else {
 			log.warn("RefreshToken을 찾을 수 없음 - token: {}", refreshToken);
 		}
+	}
+
+	@Transactional
+	public void deleteUser(Long userId) {
+		User user = userRepository.findById(userId)
+			.orElseThrow(() -> new ResourceNotFoundException("사용자를 찾을 수 없습니다"));
+
+		refreshTokenRepository.deleteByUserId(userId);
+
+		letterRepository.deleteByUserId(userId);
+
+		userRepository.delete(user);
+
+		log.info("회원 탈퇴 완료 - userId: {}", userId);
 	}
 
 	private void saveRefreshToken(Long userId, String token) {

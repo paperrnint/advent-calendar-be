@@ -26,6 +26,7 @@ import com.example.adventcalendar.entity.User;
 import com.example.adventcalendar.exception.ConflictException;
 import com.example.adventcalendar.exception.ResourceNotFoundException;
 import com.example.adventcalendar.exception.UnauthorizedException;
+import com.example.adventcalendar.repository.LetterRepository;
 import com.example.adventcalendar.repository.RefreshTokenRepository;
 import com.example.adventcalendar.repository.UserRepository;
 import com.example.adventcalendar.service.OAuth2Service.OAuthUserInfo;
@@ -45,6 +46,9 @@ class AuthServiceTest {
 
 	@Mock
 	private RefreshTokenRepository refreshTokenRepository;
+
+	@Mock
+	private LetterRepository letterRepository;
 
 	@InjectMocks
 	private AuthService authService;
@@ -534,6 +538,63 @@ class AuthServiceTest {
 				.doesNotThrowAnyException();
 
 			verify(refreshTokenRepository, never()).delete(any());
+		}
+	}
+
+	@Nested
+	@DisplayName("회원 탈퇴")
+	class DeleteUser {
+
+		@Test
+		@DisplayName("회원 탈퇴 성공 - 모든 데이터 삭제")
+		void deleteUser_Success() {
+			// given
+			Long userId = 1L;
+
+			given(userRepository.findById(userId)).willReturn(Optional.of(activeUser));
+
+			// when
+			authService.deleteUser(userId);
+
+			// then
+			verify(refreshTokenRepository).deleteByUserId(userId);
+			verify(letterRepository).deleteByUserId(userId);
+			verify(userRepository).delete(activeUser);
+		}
+
+		@Test
+		@DisplayName("존재하지 않는 사용자 탈퇴 시 예외 발생")
+		void deleteUser_UserNotFound_ThrowsException() {
+			// given
+			Long userId = 999L;
+
+			given(userRepository.findById(userId)).willReturn(Optional.empty());
+
+			// when & then
+			assertThatThrownBy(() -> authService.deleteUser(userId))
+				.isInstanceOf(ResourceNotFoundException.class)
+				.hasMessage("사용자를 찾을 수 없습니다");
+
+			verify(refreshTokenRepository, never()).deleteByUserId(anyLong());
+			verify(letterRepository, never()).deleteByUserId(anyLong());
+			verify(userRepository, never()).delete(any(User.class));
+		}
+
+		@Test
+		@DisplayName("PENDING 상태 사용자도 탈퇴 가능")
+		void deleteUser_PendingUser_Success() {
+			// given
+			Long userId = 2L;
+
+			given(userRepository.findById(userId)).willReturn(Optional.of(pendingUser));
+
+			// when
+			authService.deleteUser(userId);
+
+			// then
+			verify(refreshTokenRepository).deleteByUserId(userId);
+			verify(letterRepository).deleteByUserId(userId);
+			verify(userRepository).delete(pendingUser);
 		}
 	}
 
