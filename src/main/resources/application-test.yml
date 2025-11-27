@@ -23,6 +23,10 @@ jwt:
   access-token-validity-in-seconds: 3600
   refresh-token-validity-in-seconds: 604800
 
+# 테스트용 암호화 키
+encryption:
+  secret-key: test1234567890123456789012345678
+
 # OAuth2 테스트 설정
 oauth2:
   naver:

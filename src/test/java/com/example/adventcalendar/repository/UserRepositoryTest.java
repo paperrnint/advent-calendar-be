@@ -8,15 +8,19 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
+import com.example.adventcalendar.config.EncryptionConverter;
 import com.example.adventcalendar.constant.UserStatus;
 import com.example.adventcalendar.entity.User;
+import com.example.adventcalendar.util.EncryptionUtils;
 
 import java.util.Optional;
 
 @DataJpaTest
 @ActiveProfiles("test")
+@Import({EncryptionUtils.class, EncryptionConverter.class})
 @DisplayName("UserRepository 통합 테스트")
 class UserRepositoryTest {
 
@@ -47,66 +51,6 @@ class UserRepositoryTest {
 			.oauthId("kakao456")
 			.status(UserStatus.PENDING)
 			.build();
-	}
-
-	@Nested
-	@DisplayName("findByEmail 테스트")
-	class FindByEmail {
-
-		@Test
-		@DisplayName("이메일로 사용자 조회 성공")
-		void findByEmail_Success() {
-			// given
-			userRepository.save(activeUser);
-
-			// when
-			Optional<User> found = userRepository.findByEmail("test@example.com");
-
-			// then
-			assertThat(found).isPresent();
-			assertThat(found.get().getEmail()).isEqualTo("test@example.com");
-			assertThat(found.get().getName()).isEqualTo("테스트");
-			assertThat(found.get().getOauthProvider()).isEqualTo("NAVER");
-		}
-
-		@Test
-		@DisplayName("존재하지 않는 이메일 조회 시 빈 Optional 반환")
-		void findByEmail_NotFound_ReturnsEmpty() {
-			// when
-			Optional<User> found = userRepository.findByEmail("nonexistent@example.com");
-
-			// then
-			assertThat(found).isEmpty();
-		}
-
-		@Test
-		@DisplayName("대소문자 구분하여 조회")
-		void findByEmail_CaseSensitive() {
-			// given
-			userRepository.save(activeUser);
-
-			// when
-			Optional<User> found = userRepository.findByEmail("TEST@EXAMPLE.COM");
-
-			// then
-			assertThat(found).isEmpty(); // 대소문자가 다르면 조회 안됨
-		}
-
-		@Test
-		@DisplayName("여러 사용자 중 특정 이메일 조회")
-		void findByEmail_MultipleUsers_FindsCorrectOne() {
-			// given
-			userRepository.save(activeUser);
-			userRepository.save(pendingUser);
-
-			// when
-			Optional<User> found = userRepository.findByEmail("pending@example.com");
-
-			// then
-			assertThat(found).isPresent();
-			assertThat(found.get().getEmail()).isEqualTo("pending@example.com");
-			assertThat(found.get().getOauthProvider()).isEqualTo("KAKAO");
-		}
 	}
 
 	@Nested

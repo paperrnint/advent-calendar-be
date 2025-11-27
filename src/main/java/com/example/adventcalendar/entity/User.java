@@ -2,8 +2,10 @@ package com.example.adventcalendar.entity;
 
 import java.util.UUID;
 
+import com.example.adventcalendar.config.EncryptionConverter;
 import com.example.adventcalendar.constant.UserStatus;
 import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -35,7 +37,8 @@ public class User extends BaseEntity {
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@Column(nullable = false, length = 100)
+	@Column(nullable = false, length = 255)
+	@Convert(converter = EncryptionConverter.class)
 	private String email;
 
 	@Column(nullable = false, length = 50)
