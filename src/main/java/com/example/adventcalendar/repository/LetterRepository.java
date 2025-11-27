@@ -20,4 +20,6 @@ public interface LetterRepository extends JpaRepository<Letter, Long> {
 
 	@Query("SELECT l.day, COUNT(l) FROM Letter l WHERE l.user.id = :userId GROUP BY l.day")
 	List<Object[]> countByUserIdGroupByDay(@Param("userId") Long userId);
+
+	void deleteByUserId(Long userId);
 }

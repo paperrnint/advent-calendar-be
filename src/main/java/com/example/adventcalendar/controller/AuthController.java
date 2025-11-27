@@ -264,6 +264,46 @@ public class AuthController {
 		return ApiResponse.success();
 	}
 
+	@Operation(summary = "회원 탈퇴", description = "회원 탈퇴 및 모든 데이터를 삭제합니다")
+	@DeleteMapping("/users")
+	public ApiResponse<Void> deleteUser(
+		@Parameter(description = "현재 로그인된 사용자 ID", hidden = true) Authentication authentication,
+		HttpServletResponse response
+	) {
+		if (authentication == null || authentication.getPrincipal() == null) {
+			throw new UnauthorizedException("인증이 필요합니다");
+		}
+
+		Long userId = (Long) authentication.getPrincipal();
+		log.info("회원 탈퇴 요청 - userId: {}", userId);
+
+		authService.deleteUser(userId);
+
+		// 쿠키 삭제
+		ResponseCookie deleteRefreshToken = ResponseCookie.from("refreshToken", "")
+			.httpOnly(true)
+			.secure(true)
+			.path("/")
+			.maxAge(0)
+			.sameSite("Strict")
+			.build();
+
+		ResponseCookie deleteAccessToken = ResponseCookie.from("accessToken", "")
+			.httpOnly(true)
+			.secure(true)
+			.path("/")
+			.maxAge(0)
+			.sameSite("Strict")
+			.build();
+
+		response.addHeader("Set-Cookie", deleteRefreshToken.toString());
+		response.addHeader("Set-Cookie", deleteAccessToken.toString());
+
+		log.info("회원 탈퇴 완료 - userId: {}", userId);
+
+		return ApiResponse.success();
+	}
+
 	private void setTempTokenCookie(HttpServletResponse response, String tempToken) {
 		ResponseCookie cookie = ResponseCookie.from("tempToken", tempToken)
 			.httpOnly(true)

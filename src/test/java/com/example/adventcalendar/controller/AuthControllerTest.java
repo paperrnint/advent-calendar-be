@@ -20,8 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.adventcalendar.config.JwtTokenProvider;
 import com.example.adventcalendar.constant.UserStatus;
 import com.example.adventcalendar.dto.request.UserCreateRequest;
+import com.example.adventcalendar.entity.Letter;
 import com.example.adventcalendar.entity.RefreshToken;
 import com.example.adventcalendar.entity.User;
+import com.example.adventcalendar.repository.LetterRepository;
 import com.example.adventcalendar.repository.RefreshTokenRepository;
 import com.example.adventcalendar.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,6 +49,9 @@ class AuthControllerTest {
 	private UserRepository userRepository;
 
 	@Autowired
+	private LetterRepository letterRepository;
+
+	@Autowired
 	private RefreshTokenRepository refreshTokenRepository;
 
 	@Autowired
@@ -57,6 +62,7 @@ class AuthControllerTest {
 
 	@BeforeEach
 	void setUp() {
+		letterRepository.deleteAll();
 		refreshTokenRepository.deleteAll();
 		userRepository.deleteAll();
 
@@ -439,6 +445,100 @@ class AuthControllerTest {
 					.cookie(new Cookie("refreshToken", nonexistentToken)))
 				.andExpect(status().isOk())
 				.andExpect(jsonPath("$.status").value(200));
+		}
+	}
+
+	@Nested
+	@DisplayName("DELETE /api/auth/users - 회원 탈퇴")
+	class DeleteUser {
+
+		@Test
+		@DisplayName("회원 탈퇴 성공")
+		void deleteUser_Success() throws Exception {
+			// given
+			String accessToken = jwtTokenProvider.createAccessToken(
+				activeUser.getId(),
+				activeUser.getEmail(),
+				activeUser.getOauthProvider()
+			);
+
+			// 편지 추가
+			Letter letter = Letter.builder()
+				.user(activeUser)
+				.day(10)
+				.content("테스트 편지")
+				.fromName("친구")
+				.build();
+			letterRepository.save(letter);
+
+			// RefreshToken 추가
+			RefreshToken refreshToken = RefreshToken.builder()
+				.userId(activeUser.getId())
+				.token("test-refresh-token")
+				.expiresAt(LocalDateTime.now().plusDays(7))
+				.build();
+			refreshTokenRepository.save(refreshToken);
+
+			// when & then
+			mockMvc.perform(delete("/api/auth/users")
+					.cookie(new Cookie("accessToken", accessToken)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value(200))
+				.andExpect(cookie().maxAge("refreshToken", 0))
+				.andExpect(cookie().maxAge("accessToken", 0));
+
+			// DB 검증 - 모든 데이터 삭제 확인
+			assertThat(userRepository.findById(activeUser.getId())).isEmpty();
+			assertThat(letterRepository.findByUserId(activeUser.getId())).isEmpty();
+			assertThat(refreshTokenRepository.findByUserId(activeUser.getId())).isEmpty();
+		}
+
+		@Test
+		@DisplayName("인증되지 않은 요청은 401 에러")
+		void deleteUser_Unauthorized_Returns401() throws Exception {
+			// when & then
+			mockMvc.perform(delete("/api/auth/users"))
+				.andExpect(status().isUnauthorized())
+				.andExpect(jsonPath("$.status").value(401))
+				.andExpect(jsonPath("$.message").value("인증이 필요합니다"));
+		}
+
+		@Test
+		@DisplayName("존재하지 않는 사용자는 404 에러")
+		void deleteUser_UserNotFound_Returns404() throws Exception {
+			// given
+			String accessToken = jwtTokenProvider.createAccessToken(
+				999L,
+				"nonexistent@example.com",
+				"NAVER"
+			);
+
+			// when & then
+			mockMvc.perform(delete("/api/auth/users")
+					.cookie(new Cookie("accessToken", accessToken)))
+				.andExpect(status().isNotFound())
+				.andExpect(jsonPath("$.status").value(404))
+				.andExpect(jsonPath("$.message").value("사용자를 찾을 수 없습니다"));
+		}
+
+		@Test
+		@DisplayName("PENDING 상태 사용자도 탈퇴 가능")
+		void deleteUser_PendingUser_Success() throws Exception {
+			// given
+			String accessToken = jwtTokenProvider.createAccessToken(
+				pendingUser.getId(),
+				pendingUser.getEmail(),
+				pendingUser.getOauthProvider()
+			);
+
+			// when & then
+			mockMvc.perform(delete("/api/auth/users")
+					.cookie(new Cookie("accessToken", accessToken)))
+				.andExpect(status().isOk())
+				.andExpect(jsonPath("$.status").value(200));
+
+			// DB 검증
+			assertThat(userRepository.findById(pendingUser.getId())).isEmpty();
 		}
 	}
 
