@@ -58,6 +58,10 @@ jwt:
   access-token-validity-in-seconds: 3600  # 1시간
   refresh-token-validity-in-seconds: 604800  # 7일
 
+# 암호화 설정
+encryption:
+  secret-key: ${ENCRYPTION_SECRET_KEY}
+
 # Logging
 logging:
   level:
